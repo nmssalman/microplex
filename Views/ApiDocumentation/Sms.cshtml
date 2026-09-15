@@ -1,0 +1,78 @@
+@model IReadOnlyList<Microplex.Web.Data.Client>
+@{
+    Layout = "_DashboardLayout";
+    ViewData["Title"] = "SMS API Documentation";
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+}
+<section class="dashboard-heading"><div><span class="page-kicker">API DOCUMENTATION · SMS API</span><h1>SMS API keys &amp; integration.</h1><p>Generate an API key for each SMS-enabled client, and share the integration guide below with their developers.</p></div></section>
+@if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
+@if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
+
+<section class="dashboard-card report-card mb-4">
+<div class="card-heading"><div><span class="page-kicker">STEP 1</span><h2>Generate API keys</h2></div></div>
+@if (Model.Count == 0)
+{
+    <div class="report-empty"><span>▣</span><h2>No SMS clients yet</h2><p>Enable the SMS solution for a client to issue an API key here.</p><a asp-controller="Clients" asp-action="Index" class="btn btn-admin-primary">View clients <span>→</span></a></div>
+}
+else
+{
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>API Key</th><th>Action</th></tr></thead><tbody>
+@{ var avatarColors = new[] { "blue", "purple", "green" }; }
+@for (var i = 0; i < Model.Count; i++)
+{
+    var client = Model[i];
+    <tr>
+        <td><span class="table-avatar @avatarColors[i % avatarColors.Length]">@client.CompanyName[0].ToString().ToUpperInvariant()</span><strong>@client.CompanyName</strong></td>
+        <td>@if (string.IsNullOrEmpty(client.SmsApiKey)) { <span class="api-key-empty">No key generated</span> } else { <code class="api-key-value">@client.SmsApiKey</code> }</td>
+        <td>@{ var hasKey = !string.IsNullOrEmpty(client.SmsApiKey); }<form asp-controller="ApiDocumentation" asp-action="GenerateApiKey" method="post" onsubmit="@(hasKey ? "return confirm('Regenerating will invalidate the current API key. Continue?');" : "")"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-add-button">@(hasKey ? "Regenerate Key" : "Generate API Key")</button></form></td>
+    </tr>
+}
+    </tbody></table></div>
+}
+</section>
+
+<section class="dashboard-card report-card">
+<div class="card-heading"><div><span class="page-kicker">STEP 2</span><h2>Integration guide</h2></div></div>
+<div class="api-doc-block">
+    <h3>Authentication</h3>
+    <p>Every request must include the client's API key in an <code>X-Api-Key</code> header.</p>
+</div>
+<div class="api-doc-block">
+    <h3>1. Get SMS balance</h3>
+    <p><span class="api-method get">GET</span> <code>@baseUrl/api/sms/balance</code></p>
+    <p class="api-doc-label">Sample request</p>
+    <pre class="code-block"><code>curl -X GET "@baseUrl/api/sms/balance" \
+  -H "X-Api-Key: YOUR_API_KEY"</code></pre>
+    <p class="api-doc-label">Sample response</p>
+    <pre class="code-block"><code>{
+  "success": true,
+  "companyName": "Denims",
+  "balance": 1010
+}</code></pre>
+</div>
+<div class="api-doc-block">
+    <h3>2. Report SMS sent</h3>
+    <p>Call this once per SMS successfully delivered. Each confirmed call deducts exactly 1 unit from the client's balance.</p>
+    <p><span class="api-method post">POST</span> <code>@baseUrl/api/sms/report-sent</code></p>
+    <p class="api-doc-label">Sample request</p>
+    <pre class="code-block"><code>curl -X POST "@baseUrl/api/sms/report-sent" \
+  -H "X-Api-Key: YOUR_API_KEY"</code></pre>
+    <p class="api-doc-label">Sample response</p>
+    <pre class="code-block"><code>{
+  "success": true,
+  "companyName": "Denims",
+  "balance": 1009
+}</code></pre>
+    <p class="api-doc-label">Insufficient balance response (HTTP 400)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "Insufficient SMS balance.",
+  "balance": 0
+}</code></pre>
+    <p class="api-doc-label">Invalid API key response (HTTP 401)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "Invalid or missing API key."
+}</code></pre>
+</div>
+</section>

@@ -1,0 +1,70 @@
+@inject Microsoft.AspNetCore.Identity.UserManager<Microplex.Web.Data.ApplicationUser> UserManager
+@inject Microplex.Web.Data.ApplicationDbContext Db
+@{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var displayName = currentUser?.FullName ?? "Microplex Admin";
+    var initials = string.Concat(displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
+    var activeClientCount = Db.Clients.Count();
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>@ViewData["Title"] | Microplex Admin</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/client-admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/client-edit.css" asp-append-version="true" />
+</head>
+<body class="admin-body">
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-brand-row">
+            <a class="admin-brand" asp-controller="Dashboard" asp-action="Index"><span class="admin-brand-mark">M</span><span>MICROPLEX<small>Business Suite</small></span></a>
+            <button class="sidebar-close d-lg-none" type="button" data-sidebar-close aria-label="Close navigation">×</button>
+        </div>
+        <div class="workspace-badge"><span>WORKSPACE</span><strong>Microplex Corporation</strong><small><i></i> System online</small></div>
+        <nav class="sidebar-nav" aria-label="Dashboard navigation">
+            <span class="nav-caption">WORKSPACE</span>
+            <a class="sidebar-link @(currentController == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index"><b>⌂</b><span>Dashboard</span></a>
+            <button class="sidebar-link @(currentController == "Clients" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#clientMenu" aria-expanded="@(currentController == "Clients" ? "true" : "false")" aria-controls="clientMenu"><b>▣</b><span>Client Management</span><em>⌄</em></button>
+            <div class="collapse sidebar-submenu @(currentController == "Clients" ? "show" : "")" id="clientMenu">
+                <a asp-controller="Clients" asp-action="Create">Register Client</a>
+                <a asp-controller="Clients" asp-action="Index">Client Info Report</a>
+            </div>
+            <button class="sidebar-link @(currentController == "Sms" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#solutionsMenu" aria-expanded="@(currentController == "Sms" ? "true" : "false")" aria-controls="solutionsMenu"><b>▤</b><span>Solutions</span><em>⌄</em></button>
+            <div class="collapse sidebar-submenu @(currentController == "Sms" ? "show" : "")" id="solutionsMenu">
+                <a asp-controller="Sms" asp-action="Index">SMS API</a>
+            </div>
+            <button class="sidebar-link @(currentController == "ApiDocumentation" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#apiDocsMenu" aria-expanded="@(currentController == "ApiDocumentation" ? "true" : "false")" aria-controls="apiDocsMenu"><b>⌨</b><span>API Documentation</span><em>⌄</em></button>
+            <div class="collapse sidebar-submenu @(currentController == "ApiDocumentation" ? "show" : "")" id="apiDocsMenu">
+                <a asp-controller="ApiDocumentation" asp-action="Sms">SMS API</a>
+            </div>
+            <button class="sidebar-link" type="button"><b>◫</b><span>Projects</span><em>›</em></button>
+            <button class="sidebar-link" type="button"><b>◧</b><span>Finance</span><em>›</em></button>
+            <button class="sidebar-link" type="button"><b>⌁</b><span>Reports</span><em>›</em></button>
+            <span class="nav-caption mt-4">SYSTEM</span>
+            <button class="sidebar-link" type="button"><b>⚙</b><span>Administration</span><em>›</em></button>
+        </nav>
+        <div class="sidebar-profile"><span class="profile-avatar">@initials</span><span><strong>@displayName</strong><small>@User.Identity?.Name</small></span><form asp-controller="Account" asp-action="Logout" method="post"><button type="submit" title="Sign out" aria-label="Sign out">↪</button></form></div>
+    </aside>
+    <div class="sidebar-backdrop" data-sidebar-close></div>
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <button class="mobile-menu d-lg-none" type="button" data-sidebar-open aria-label="Open navigation">☰</button>
+            <label class="top-search"><span>⌕</span><input type="search" placeholder="Search your workspace" aria-label="Search workspace" /></label>
+            <div class="top-actions">
+                <div class="utility-chip d-none d-md-flex"><span>REGISTERED CLIENTS</span><strong>@activeClientCount</strong></div>
+                <button class="notification-button" type="button" aria-label="Notifications">♢<span></span></button>
+                <div class="top-profile"><i></i><span><strong>@displayName</strong><small>Super Administrator</small></span><b>@initials</b></div>
+            </div>
+        </header>
+        <main class="admin-content">@RenderBody()</main>
+        <footer class="admin-footer">© @DateTime.Now.Year MICROPLEX CORPORATION</footer>
+    </div>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/admin.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

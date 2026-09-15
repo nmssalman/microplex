@@ -1,0 +1,54 @@
+@model IReadOnlyList<Microplex.Web.Data.Client>
+@{ Layout = "_DashboardLayout"; ViewData["Title"] = "SMS API"; }
+<section class="dashboard-heading"><div><span class="page-kicker">SOLUTIONS · SMS API</span><h1>SMS credit management.</h1><p>Top up SMS credits for every client with the SMS solution enabled.</p></div></section>
+@if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
+@if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
+<div class="row g-4">
+<div class="col-xl-8">
+<section class="dashboard-card report-card h-100">
+@if (Model.Count == 0)
+{
+    <div class="report-empty"><span>▣</span><h2>No SMS clients yet</h2><p>Enable the SMS solution for a client to manage their credits here.</p><a asp-controller="Clients" asp-action="Index" class="btn btn-admin-primary">View clients <span>→</span></a></div>
+}
+else
+{
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>Current Credits</th><th>Add Credits</th><th>Reset</th></tr></thead><tbody>
+@{ var avatarColors = new[] { "blue", "purple", "green" }; }
+@for (var i = 0; i < Model.Count; i++)
+{
+    var client = Model[i];
+    <tr>
+        <td><span class="table-avatar @avatarColors[i % avatarColors.Length]">@client.CompanyName[0].ToString().ToUpperInvariant()</span><strong>@client.CompanyName</strong></td>
+        <td><strong class="credit-balance">@client.SmsCredits</strong></td>
+        <td><form asp-controller="Sms" asp-action="AddCredit" method="post" class="credit-form"><input type="hidden" name="clientId" value="@client.ClientId" /><input type="number" name="amount" class="credit-input" min="1" step="1" placeholder="e.g. 500" required /><button type="submit" class="credit-add-button">Add Credit</button></form></td>
+        <td><form asp-controller="Sms" asp-action="ResetCredit" method="post" onsubmit="return confirm('Reset @client.CompanyName\'s credit balance to 0?');"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-reset-button">Reset</button></form></td>
+    </tr>
+}
+    </tbody></table></div>
+}
+</section>
+</div>
+<div class="col-xl-4">
+<section class="dashboard-card h-100">
+    <div class="card-heading"><div><span class="page-kicker">CALCULATOR</span><h2>Rs to SMS units</h2></div></div>
+    <p class="calculator-hint">1 SMS unit costs Rs 0.99</p>
+    <label class="form-label" for="calcRsInput">Amount (Rs)</label>
+    <input type="number" id="calcRsInput" class="credit-input calculator-input" min="0" step="1" placeholder="e.g. 1000" />
+    <div class="calculator-result"><span>SMS Units</span><strong id="calcUnitsResult">0</strong></div>
+</section>
+</div>
+</div>
+@section Scripts {
+<script>
+    (function () {
+        var RATE = 0.99;
+        var rsInput = document.getElementById("calcRsInput");
+        var unitsResult = document.getElementById("calcUnitsResult");
+        if (!rsInput || !unitsResult) return;
+        rsInput.addEventListener("input", function () {
+            var rs = parseFloat(rsInput.value);
+            unitsResult.textContent = (!isFinite(rs) || rs <= 0) ? "0" : Math.floor(rs / RATE).toString();
+        });
+    })();
+</script>
+}

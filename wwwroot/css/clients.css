@@ -1,0 +1,19 @@
+.client-kumarasingha::before {
+  background: linear-gradient(135deg, #12372b 0%, #16805e 56%, #65b741 100%);
+}
+
+.client-kumarasingha .client-type {
+  color: #d8ff9f;
+}
+
+.client-kumarasingha .client-location > span {
+  color: #c7ff72;
+}
+
+.client-card h3 {
+  font-size: clamp(2rem, 3.4vw, 3.15rem);
+}
+
+.client-content {
+  max-width: 94%;
+}
