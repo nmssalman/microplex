@@ -7,8 +7,7 @@ public static class IdentitySeedCommand
 {
     public static async Task RunAsync(IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        var connectionString = DatabaseConfiguration.GetRequiredConnectionString(configuration);
         await using var db = new ApplicationDbContext(
             new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(connectionString).Options);
         const string roleName = IdentitySeeder.SuperAdminRole;

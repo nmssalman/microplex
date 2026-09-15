@@ -16,8 +16,7 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        var connectionString = DatabaseConfiguration.GetRequiredConnectionString(configuration);
         return new ApplicationDbContext(
             new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(connectionString).Options);
     }
