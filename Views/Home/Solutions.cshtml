@@ -12,22 +12,27 @@
 
 <div class="modal fade" id="integrationModal" tabindex="-1" aria-labelledby="integrationModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content integration-modal">
       <form asp-controller="Inquiry" asp-action="Submit" method="post">
         <input type="hidden" name="Service" id="integrationServiceInput" value="" />
         <input type="hidden" name="ReturnUrl" value="@Context.Request.Path" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="integrationModalLabel">Get integration details</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="integration-modal-header">
+          <div class="integration-modal-icon" aria-hidden="true">&#9993;</div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <p id="integrationModalCopy" class="mb-3"></p>
-          <label for="integrationEmailInput" class="form-label">Your email address</label>
-          <input type="email" name="Email" id="integrationEmailInput" class="form-control" placeholder="you@company.com" required />
+        <div class="integration-modal-body">
+          <span class="integration-modal-eyebrow">FREE INTEGRATION SUPPORT</span>
+          <h5 class="integration-modal-title" id="integrationModalLabel">Get integration details</h5>
+          <p id="integrationModalCopy" class="integration-modal-copy"></p>
+          <label for="integrationEmailInput" class="integration-modal-label">Your email address</label>
+          <div class="integration-input-group">
+            <span class="integration-input-icon" aria-hidden="true">&#9993;</span>
+            <input type="email" name="Email" id="integrationEmailInput" class="form-control integration-input" placeholder="you@company.com" required />
+          </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Send</button>
+        <div class="integration-modal-footer">
+          <button type="button" class="btn integration-btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn integration-btn-send">Send <span aria-hidden="true">&rarr;</span></button>
         </div>
       </form>
     </div>
