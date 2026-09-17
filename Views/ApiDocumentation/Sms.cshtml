@@ -23,7 +23,7 @@ else
     var client = Model[i];
     <tr>
         <td><span class="table-avatar @avatarColors[i % avatarColors.Length]">@client.CompanyName[0].ToString().ToUpperInvariant()</span><strong>@client.CompanyName</strong></td>
-        <td>@if (string.IsNullOrEmpty(client.SmsApiKey)) { <span class="api-key-empty">No key generated</span> } else { <code class="api-key-value">@client.SmsApiKey</code> }</td>
+        <td>@if (string.IsNullOrEmpty(client.SmsApiKey)) { <span class="api-key-empty">No key generated</span> } else { <div class="api-key-cell" data-key="@client.SmsApiKey"><code class="api-key-value masked">••••••••••••••••••••••••••••••••••••••••••••••••</code><button type="button" class="api-key-toggle-btn" data-action="toggle-key">Show</button><button type="button" class="api-key-icon-btn" data-action="copy-key" title="Copy API key" aria-label="Copy API key">⧉</button></div> }</td>
         <td>@{ var hasKey = !string.IsNullOrEmpty(client.SmsApiKey); }<form asp-controller="ApiDocumentation" asp-action="GenerateApiKey" method="post" onsubmit="@(hasKey ? "return confirm('Regenerating will invalidate the current API key. Continue?');" : "")"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-add-button">@(hasKey ? "Regenerate Key" : "Generate API Key")</button></form></td>
     </tr>
 }
@@ -113,3 +113,59 @@ else
 }</code></pre>
 </div>
 </section>
+@section Scripts {
+<script>
+    (function () {
+        var MASK = "••••••••••••••••••••••••••••••••••••••••••••••••";
+        document.addEventListener("click", function (event) {
+            var toggleBtn = event.target.closest('[data-action="toggle-key"]');
+            if (toggleBtn) {
+                var cell = toggleBtn.closest(".api-key-cell");
+                var codeEl = cell.querySelector(".api-key-value");
+                var isMasked = codeEl.classList.contains("masked");
+                if (isMasked) {
+                    codeEl.textContent = cell.dataset.key;
+                    codeEl.classList.remove("masked");
+                    toggleBtn.textContent = "Hide";
+                } else {
+                    codeEl.textContent = MASK;
+                    codeEl.classList.add("masked");
+                    toggleBtn.textContent = "Show";
+                }
+                return;
+            }
+
+            var copyBtn = event.target.closest('[data-action="copy-key"]');
+            if (copyBtn) {
+                var cell2 = copyBtn.closest(".api-key-cell");
+                var key = cell2.dataset.key;
+                var flash = function (text) {
+                    var original = copyBtn.textContent;
+                    copyBtn.textContent = text;
+                    setTimeout(function () { copyBtn.textContent = original; }, 1200);
+                };
+                var fallbackCopy = function () {
+                    var textarea = document.createElement("textarea");
+                    textarea.value = key;
+                    textarea.style.position = "fixed";
+                    textarea.style.opacity = "0";
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand("copy");
+                        flash("✓");
+                    } catch (err) {
+                        flash("!");
+                    }
+                    document.body.removeChild(textarea);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(key).then(function () { flash("✓"); }, fallbackCopy);
+                } else {
+                    fallbackCopy();
+                }
+            }
+        });
+    })();
+</script>
+}
