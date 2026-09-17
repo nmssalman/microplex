@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microplex.Web.Data;
 using Microplex.Web.Models;
+using Microplex.Web.Services;
 
 namespace Microplex.Web.Controllers;
 
 [ApiController]
 [Route("api/sms")]
-public sealed class SmsApiController(ApplicationDbContext db) : ControllerBase
+public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient smsGateway) : ControllerBase
 {
     private static readonly string[] AllowedMessageTypes = ["plain", "unicode"];
 
@@ -51,6 +52,18 @@ public sealed class SmsApiController(ApplicationDbContext db) : ControllerBase
         if (client.SmsCredits <= 0)
             return BadRequest(new { success = false, message = "Insufficient SMS balance.", balance = client.SmsCredits });
 
+        var gatewayResult = await smsGateway.SendAsync(request.Recipient, request.SenderId, request.Type, request.Message);
+        if (!gatewayResult.Success)
+        {
+            return StatusCode(502, new
+            {
+                success = false,
+                message = "The SMS gateway rejected the request.",
+                gatewayStatusCode = gatewayResult.StatusCode,
+                gatewayResponse = gatewayResult.ResponseBody
+            });
+        }
+
         await DeductOneCreditAsync(client);
 
         return Ok(new
@@ -59,7 +72,8 @@ public sealed class SmsApiController(ApplicationDbContext db) : ControllerBase
             message_id = Guid.NewGuid().ToString("N"),
             recipient = request.Recipient,
             status = "sent",
-            balance = client.SmsCredits
+            balance = client.SmsCredits,
+            gatewayResponse = gatewayResult.ResponseBody
         });
     }
 

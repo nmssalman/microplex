@@ -3,6 +3,7 @@ namespace Microplex.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microplex.Web.Data;
+using Microplex.Web.Services;
 
 public class Program
 {
@@ -20,6 +21,7 @@ public class Program
         builder.Services.AddControllersWithViews();
         var connectionString = DatabaseConfiguration.GetRequiredConnectionString(builder.Configuration);
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+        builder.Services.AddHttpClient<SmsGatewayClient>();
         builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;

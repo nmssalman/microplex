@@ -39,7 +39,7 @@ else
 </div>
 <div class="api-doc-block">
     <h3>1. Send SMS</h3>
-    <p>Sends a message and deducts exactly 1 unit from the client's balance on success. <code>type</code> must be <code>plain</code> or <code>unicode</code>.</p>
+    <p>Delivers the message via our SMS gateway and deducts exactly 1 unit from the client's balance on success. <code>type</code> must be <code>plain</code> or <code>unicode</code>.</p>
     <p><span class="api-method post">POST</span> <code>@baseUrl/api/sms/send</code></p>
     <p class="api-doc-label">Sample request</p>
     <pre class="code-block"><code>curl -X POST "@baseUrl/api/sms/send" \
@@ -58,12 +58,20 @@ else
   "message_id": "a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d",
   "recipient": "94711111344",
   "status": "sent",
-  "balance": 1009
+  "balance": 1009,
+  "gatewayResponse": "{\"status\":\"success\",\"message\":\"Your message was successfully delivered\",\"data\":{...}}"
 }</code></pre>
     <p class="api-doc-label">Validation error response (HTTP 400)</p>
     <pre class="code-block"><code>{
   "success": false,
   "message": "recipient is required."
+}</code></pre>
+    <p class="api-doc-label">Gateway rejected response (HTTP 502)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "The SMS gateway rejected the request.",
+  "gatewayStatusCode": 422,
+  "gatewayResponse": "..."
 }</code></pre>
 </div>
 <div class="api-doc-block">
