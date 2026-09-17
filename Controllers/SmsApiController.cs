@@ -50,11 +50,15 @@ public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient s
             return BadRequest(new { success = false, message = "type must be 'plain' or 'unicode'." });
 
         if (client.SmsCredits <= 0)
+        {
+            await LogAttemptAsync(client, request, success: false, failureReason: "Insufficient SMS balance.", gatewayResponse: null);
             return BadRequest(new { success = false, message = "Insufficient SMS balance.", balance = client.SmsCredits });
+        }
 
         var gatewayResult = await smsGateway.SendAsync(request.Recipient, request.SenderId, request.Type, request.Message);
         if (!gatewayResult.Success)
         {
+            await LogAttemptAsync(client, request, success: false, failureReason: $"Gateway rejected the request (HTTP {gatewayResult.StatusCode}).", gatewayResponse: gatewayResult.ResponseBody);
             return StatusCode(502, new
             {
                 success = false,
@@ -65,6 +69,7 @@ public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient s
         }
 
         await DeductOneCreditAsync(client);
+        await LogAttemptAsync(client, request, success: true, failureReason: null, gatewayResponse: gatewayResult.ResponseBody);
 
         return Ok(new
         {
@@ -80,6 +85,24 @@ public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient s
     private async Task DeductOneCreditAsync(Client client)
     {
         client.SmsCredits -= 1;
+        await db.SaveChangesAsync();
+    }
+
+    private async Task LogAttemptAsync(Client client, SendSmsRequest request, bool success, string? failureReason, string? gatewayResponse)
+    {
+        db.SmsMessageLogs.Add(new SmsMessageLog
+        {
+            ClientId = client.ClientId,
+            Recipient = request.Recipient!,
+            SenderId = request.SenderId!,
+            Type = request.Type!,
+            Message = request.Message!,
+            Success = success,
+            FailureReason = failureReason,
+            GatewayResponse = gatewayResponse,
+            BalanceAfter = client.SmsCredits,
+            SentAtUtc = DateTime.UtcNow
+        });
         await db.SaveChangesAsync();
     }
 

@@ -7,6 +7,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<SmsMessageLog> SmsMessageLogs => Set<SmsMessageLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -18,6 +19,17 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(x => x.CompanyName);
             entity.HasIndex(x => x.Email);
             entity.HasIndex(x => x.SmsApiKey).IsUnique();
+        });
+        builder.Entity<SmsMessageLog>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.HasIndex(x => x.SentAtUtc);
+            entity.HasIndex(x => x.ClientId);
+            entity.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

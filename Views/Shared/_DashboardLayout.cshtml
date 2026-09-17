@@ -41,6 +41,10 @@
             <div class="collapse sidebar-submenu @(currentController == "ApiDocumentation" ? "show" : "")" id="apiDocsMenu">
                 <a asp-controller="ApiDocumentation" asp-action="Sms">SMS API</a>
             </div>
+            <button class="sidebar-link @(currentController == "Insights" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#insightsMenu" aria-expanded="@(currentController == "Insights" ? "true" : "false")" aria-controls="insightsMenu"><b>◔</b><span>Insights</span><em>⌄</em></button>
+            <div class="collapse sidebar-submenu @(currentController == "Insights" ? "show" : "")" id="insightsMenu">
+                <a asp-controller="Insights" asp-action="Sms">SMS Insight</a>
+            </div>
             <button class="sidebar-link" type="button"><b>◫</b><span>Projects</span><em>›</em></button>
             <button class="sidebar-link" type="button"><b>◧</b><span>Finance</span><em>›</em></button>
             <button class="sidebar-link" type="button"><b>⌁</b><span>Reports</span><em>›</em></button>
