@@ -1,6 +1,6 @@
 @model IReadOnlyList<Microplex.Web.Data.Client>
 @{ Layout = "_DashboardLayout"; ViewData["Title"] = "SMS API"; }
-<section class="dashboard-heading"><div><span class="page-kicker">SOLUTIONS · SMS API</span><h1>SMS credit management.</h1><p>Top up SMS credits for every client with the SMS solution enabled.</p></div></section>
+<section class="dashboard-heading"><div><span class="page-kicker">SOLUTIONS · SMS API</span><h1>SMS credit management.</h1><p>Top up SMS credits for every client with the SMS solution enabled.</p></div><button type="button" class="soft-button" data-bs-toggle="modal" data-bs-target="#lowCreditPreviewModal">View Sample Email</button></section>
 @if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
 @if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
 <div class="row g-4">
@@ -12,7 +12,7 @@
 }
 else
 {
-    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>Current Credits</th><th>Add Credits</th><th>Reset</th></tr></thead><tbody>
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>Current Credits</th><th>Add Credits</th><th>Reset</th><th>Low Credit Alert</th></tr></thead><tbody>
 @{ var avatarColors = new[] { "blue", "purple", "green" }; }
 @for (var i = 0; i < Model.Count; i++)
 {
@@ -22,6 +22,7 @@ else
         <td><strong class="credit-balance">@client.SmsCredits</strong></td>
         <td><form asp-controller="Sms" asp-action="AddCredit" method="post" class="credit-form"><input type="hidden" name="clientId" value="@client.ClientId" /><input type="number" name="amount" class="credit-input" min="1" step="1" placeholder="e.g. 500" required /><button type="submit" class="credit-add-button">Add Credit</button></form></td>
         <td><form asp-controller="Sms" asp-action="ResetCredit" method="post" onsubmit="return confirm('Reset @client.CompanyName\'s credit balance to 0?');"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-reset-button">Reset</button></form></td>
+        <td><form asp-controller="Sms" asp-action="SendLowCreditAlert" method="post" onsubmit="return confirm('Send a low credit alert email to @client.CompanyName?');"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-alert-button">Send Low Credit Alert</button></form></td>
     </tr>
 }
     </tbody></table></div>
@@ -37,6 +38,20 @@ else
     <div class="calculator-result"><span>SMS Units</span><strong id="calcUnitsResult">0</strong></div>
 </section>
 </div>
+</div>
+
+<div class="modal fade" id="lowCreditPreviewModal" tabindex="-1" aria-labelledby="lowCreditPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content email-preview-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="lowCreditPreviewModalLabel">Low SMS Credit Alert &mdash; Sample</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe src="@Url.Action("PreviewLowCreditAlert")" class="email-preview-frame" title="Low SMS credit alert sample email"></iframe>
+      </div>
+    </div>
+  </div>
 </div>
 @section Scripts {
 <script>
