@@ -35,14 +35,43 @@ else
 <div class="card-heading"><div><span class="page-kicker">STEP 2</span><h2>Integration guide</h2></div></div>
 <div class="api-doc-block">
     <h3>Authentication</h3>
-    <p>Every request must include the client's API key in an <code>X-Api-Key</code> header.</p>
+    <p>Send the client's API key in an <code>api_token</code> header on every request (the <code>send</code> endpoint also accepts it as an <code>api_token</code> field in the JSON body, for compatibility with existing SMS gateway integrations). <code>X-Api-Key</code> is also accepted as an alternative header name.</p>
 </div>
 <div class="api-doc-block">
-    <h3>1. Get SMS balance</h3>
+    <h3>1. Send SMS</h3>
+    <p>Sends a message and deducts exactly 1 unit from the client's balance on success. <code>type</code> must be <code>plain</code> or <code>unicode</code>.</p>
+    <p><span class="api-method post">POST</span> <code>@baseUrl/api/sms/send</code></p>
+    <p class="api-doc-label">Sample request</p>
+    <pre class="code-block"><code>curl -X POST "@baseUrl/api/sms/send" \
+  -H "Content-Type: application/json" \
+  -H "api_token: YOUR_API_KEY" \
+  -d '{
+    "api_token": "YOUR_API_KEY",
+    "recipient": "94711111344",
+    "sender_id": "DENIMS",
+    "type": "plain",
+    "message": "Your order has shipped."
+  }'</code></pre>
+    <p class="api-doc-label">Sample response</p>
+    <pre class="code-block"><code>{
+  "success": true,
+  "message_id": "a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d",
+  "recipient": "94711111344",
+  "status": "sent",
+  "balance": 1009
+}</code></pre>
+    <p class="api-doc-label">Validation error response (HTTP 400)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "recipient is required."
+}</code></pre>
+</div>
+<div class="api-doc-block">
+    <h3>2. Get SMS balance</h3>
     <p><span class="api-method get">GET</span> <code>@baseUrl/api/sms/balance</code></p>
     <p class="api-doc-label">Sample request</p>
     <pre class="code-block"><code>curl -X GET "@baseUrl/api/sms/balance" \
-  -H "X-Api-Key: YOUR_API_KEY"</code></pre>
+  -H "api_token: YOUR_API_KEY"</code></pre>
     <p class="api-doc-label">Sample response</p>
     <pre class="code-block"><code>{
   "success": true,
@@ -51,12 +80,12 @@ else
 }</code></pre>
 </div>
 <div class="api-doc-block">
-    <h3>2. Report SMS sent</h3>
-    <p>Call this once per SMS successfully delivered. Each confirmed call deducts exactly 1 unit from the client's balance.</p>
+    <h3>3. Report SMS sent</h3>
+    <p>For clients who deliver SMS through their own gateway and only need Microplex to track usage. Call this once per SMS successfully delivered; each confirmed call deducts exactly 1 unit from the client's balance.</p>
     <p><span class="api-method post">POST</span> <code>@baseUrl/api/sms/report-sent</code></p>
     <p class="api-doc-label">Sample request</p>
     <pre class="code-block"><code>curl -X POST "@baseUrl/api/sms/report-sent" \
-  -H "X-Api-Key: YOUR_API_KEY"</code></pre>
+  -H "api_token: YOUR_API_KEY"</code></pre>
     <p class="api-doc-label">Sample response</p>
     <pre class="code-block"><code>{
   "success": true,
