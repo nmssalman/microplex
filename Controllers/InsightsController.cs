@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microplex.Web.Data;
 using Microplex.Web.Models;
+using Microplex.Web.Utilities;
 
 namespace Microplex.Web.Controllers;
 
@@ -11,14 +12,18 @@ public sealed class InsightsController(ApplicationDbContext db) : Controller
 {
     public async Task<IActionResult> Sms(Guid? companyId, DateTime? from, DateTime? to)
     {
-        var today = DateTime.Now.Date;
+        var today = SriLankaTime.Now.Date;
         var fromDate = (from ?? today).Date;
         var toDate = (to ?? today).Date;
-        var toDateExclusive = toDate.AddDays(1);
+
+        // SentAtUtc is stored in UTC, so the Sri Lanka local day boundaries must be
+        // converted to UTC before filtering - comparing them directly would be off by 5:30.
+        var fromUtc = SriLankaTime.ToUtc(fromDate);
+        var toUtcExclusive = SriLankaTime.ToUtc(toDate.AddDays(1));
 
         var query = db.SmsMessageLogs.AsNoTracking()
             .Include(x => x.Client)
-            .Where(x => x.SentAtUtc >= fromDate && x.SentAtUtc < toDateExclusive);
+            .Where(x => x.SentAtUtc >= fromUtc && x.SentAtUtc < toUtcExclusive);
 
         if (companyId.HasValue && companyId.Value != Guid.Empty)
             query = query.Where(x => x.ClientId == companyId.Value);

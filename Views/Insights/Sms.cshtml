@@ -47,7 +47,7 @@ else
 @foreach (var log in Model.Logs)
 {
     <tr>
-        <td>@log.SentAtUtc.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</td>
+        <td>@Microplex.Web.Utilities.SriLankaTime.FromUtc(log.SentAtUtc).ToString("dd MMM yyyy, hh:mm tt")</td>
         <td><strong>@(log.Client?.CompanyName ?? "—")</strong></td>
         <td>@log.Recipient</td>
         <td>@log.SenderId</td>
