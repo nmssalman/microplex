@@ -22,7 +22,7 @@ public class Program
         var connectionString = DatabaseConfiguration.GetRequiredConnectionString(builder.Configuration);
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         builder.Services.AddHttpClient<SmsGatewayClient>();
-        builder.Services.AddTransient<EmailSender>();
+        builder.Services.AddHttpClient<EmailSender>();
         builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;

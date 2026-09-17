@@ -1,40 +1,39 @@
-using System.Net;
-using System.Net.Mail;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace Microplex.Web.Services;
 
-public sealed class EmailSender(IConfiguration configuration)
+public sealed class EmailSender(HttpClient httpClient, IConfiguration configuration)
 {
     public async Task SendAsync(string toAddress, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
-        var host = configuration["Smtp:Host"];
-        if (string.IsNullOrWhiteSpace(host))
-            throw new InvalidOperationException("Email is not configured. Set Smtp:Host, Smtp:Port, Smtp:Username, Smtp:Password, and Smtp:FromAddress (user secrets or environment variables).");
+        var apiKey = configuration["Brevo:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Email is not configured. Set Brevo:ApiKey (user secrets or environment variable) and Brevo:SenderEmail.");
 
-        var port = int.TryParse(configuration["Smtp:Port"], out var parsedPort) ? parsedPort : 587;
-        var username = configuration["Smtp:Username"];
-        var password = configuration["Smtp:Password"];
-        var fromAddress = configuration["Smtp:FromAddress"] ?? username
-            ?? throw new InvalidOperationException("Smtp:FromAddress is not configured.");
-        var fromName = configuration["Smtp:FromName"] ?? "Microplex Corporation";
-        var enableSsl = !bool.TryParse(configuration["Smtp:EnableSsl"], out var configuredSsl) || configuredSsl;
+        var senderEmail = configuration["Brevo:SenderEmail"] ?? "info@microplex.lk";
+        var senderName = configuration["Brevo:SenderName"] ?? "Microplex Corporation";
 
-        using var client = new SmtpClient(host, port)
+        var payload = new
         {
-            EnableSsl = enableSsl
+            sender = new { name = senderName, email = senderEmail },
+            to = new[] { new { email = toAddress } },
+            subject,
+            htmlContent = htmlBody
         };
-        if (!string.IsNullOrWhiteSpace(username))
-            client.Credentials = new NetworkCredential(username, password);
 
-        using var message = new MailMessage
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email")
         {
-            From = new MailAddress(fromAddress, fromName),
-            Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
+            Content = JsonContent.Create(payload)
         };
-        message.To.Add(toAddress);
+        request.Headers.TryAddWithoutValidation("api-key", apiKey);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        await client.SendMailAsync(message, cancellationToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Brevo rejected the email (HTTP {(int)response.StatusCode}): {body}");
+        }
     }
 }
