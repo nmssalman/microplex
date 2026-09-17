@@ -1,16 +1,48 @@
-@model IReadOnlyList<Microplex.Web.Data.Client>
+@model Microplex.Web.Models.ApiDocumentationViewModel
 @{
     Layout = "_DashboardLayout";
     ViewData["Title"] = "SMS API Documentation";
     var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var selected = Model.SelectedClient;
+    var hasSelectedKey = selected is not null && !string.IsNullOrWhiteSpace(selected.SmsApiKey);
+    var sampleKey = hasSelectedKey ? selected!.SmsApiKey! : "YOUR_API_KEY";
+    var sampleCompanyName = selected?.CompanyName ?? "Denims";
 }
 <section class="dashboard-heading"><div><span class="page-kicker">API DOCUMENTATION · SMS API</span><h1>SMS API keys &amp; integration.</h1><p>Generate an API key for each SMS-enabled client, and share the integration guide below with their developers.</p></div></section>
 @if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
 @if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
 
-<section class="dashboard-card report-card mb-4">
+<section class="dashboard-card report-card mb-4 no-print">
+<form method="get" class="insight-filters">
+    <div class="insight-filter-field">
+        <label class="form-label">Prepare guide for company</label>
+        <select name="clientId" class="admin-input" onchange="this.form.submit()">
+            <option value="">Select a company&hellip;</option>
+@foreach (var company in Model.Clients)
+{
+    var isSelected = Model.SelectedClientId == company.ClientId;
+    <option value="@company.ClientId" selected="@(isSelected ? "selected" : null)">@company.CompanyName</option>
+}
+        </select>
+    </div>
+    <div class="insight-filter-actions">
+        <button type="button" class="credit-add-button" onclick="window.print()">Export PDF</button>
+    </div>
+</form>
+</section>
+
+@if (selected is not null && !hasSelectedKey)
+{
+    <div class="alert error-alert no-print" role="alert"><span>!</span>@selected.CompanyName doesn't have an API key yet. Generate one below first.</div>
+}
+else if (selected is not null)
+{
+    <div class="alert success-alert mb-4" role="status"><span>✓</span>Showing the real API key and samples for <strong>@selected.CompanyName</strong>. Use "Export PDF" to save this as a ready-to-share integration guide.</div>
+}
+
+<section class="dashboard-card report-card mb-4 no-print">
 <div class="card-heading"><div><span class="page-kicker">STEP 1</span><h2>Generate API keys</h2></div></div>
-@if (Model.Count == 0)
+@if (Model.Clients.Count == 0)
 {
     <div class="report-empty"><span>▣</span><h2>No SMS clients yet</h2><p>Enable the SMS solution for a client to issue an API key here.</p><a asp-controller="Clients" asp-action="Index" class="btn btn-admin-primary">View clients <span>→</span></a></div>
 }
@@ -18,9 +50,9 @@ else
 {
     <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>API Key</th><th>Action</th></tr></thead><tbody>
 @{ var avatarColors = new[] { "blue", "purple", "green" }; }
-@for (var i = 0; i < Model.Count; i++)
+@for (var i = 0; i < Model.Clients.Count; i++)
 {
-    var client = Model[i];
+    var client = Model.Clients[i];
     <tr>
         <td><span class="table-avatar @avatarColors[i % avatarColors.Length]">@client.CompanyName[0].ToString().ToUpperInvariant()</span><strong>@client.CompanyName</strong></td>
         <td>@if (string.IsNullOrEmpty(client.SmsApiKey)) { <span class="api-key-empty">No key generated</span> } else { <div class="api-key-cell" data-key="@client.SmsApiKey"><code class="api-key-value masked">••••••••••••••••••••••••••••••••••••••••••••••••</code><button type="button" class="api-key-toggle-btn" data-action="toggle-key">Show</button><button type="button" class="api-key-icon-btn" data-action="copy-key" title="Copy API key" aria-label="Copy API key">⧉</button></div> }</td>
@@ -32,7 +64,7 @@ else
 </section>
 
 <section class="dashboard-card report-card">
-<div class="card-heading"><div><span class="page-kicker">STEP 2</span><h2>Integration guide</h2></div></div>
+<div class="card-heading"><div><span class="page-kicker">STEP 2</span><h2>Integration guide@(selected is not null ? $" for {selected.CompanyName}" : "")</h2></div></div>
 <div class="api-doc-block">
     <h3>Authentication</h3>
     <p>Send the client's API key in an <code>api_token</code> header on every request (the <code>send</code> endpoint also accepts it as an <code>api_token</code> field in the JSON body, for compatibility with existing SMS gateway integrations). <code>X-Api-Key</code> is also accepted as an alternative header name.</p>
@@ -44,9 +76,9 @@ else
     <p class="api-doc-label">Sample request</p>
     <pre class="code-block"><code>curl -X POST "@baseUrl/api/sms/send" \
   -H "Content-Type: application/json" \
-  -H "api_token: YOUR_API_KEY" \
+  -H "api_token: @sampleKey" \
   -d '{
-    "api_token": "YOUR_API_KEY",
+    "api_token": "@sampleKey",
     "recipient": "94711111344",
     "sender_id": "DENIMS",
     "type": "plain",
@@ -85,11 +117,11 @@ else
     <p><span class="api-method get">GET</span> <code>@baseUrl/api/sms/balance</code></p>
     <p class="api-doc-label">Sample request</p>
     <pre class="code-block"><code>curl -X GET "@baseUrl/api/sms/balance" \
-  -H "api_token: YOUR_API_KEY"</code></pre>
+  -H "api_token: @sampleKey"</code></pre>
     <p class="api-doc-label">Sample response</p>
     <pre class="code-block"><code>{
   "success": true,
-  "companyName": "Denims",
+  "companyName": "@sampleCompanyName",
   "balance": 1010
 }</code></pre>
     <p class="api-doc-label">Invalid API key response (HTTP 401)</p>
