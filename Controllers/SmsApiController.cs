@@ -21,19 +21,6 @@ public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient s
         return Ok(new { success = true, companyName = client.CompanyName, balance = client.SmsCredits });
     }
 
-    [HttpPost("report-sent")]
-    public async Task<IActionResult> ReportSent()
-    {
-        var client = await AuthenticateAsync();
-        if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API key." });
-
-        if (client.SmsCredits <= 0)
-            return BadRequest(new { success = false, message = "Insufficient SMS balance.", balance = client.SmsCredits });
-
-        await DeductOneCreditAsync(client);
-        return Ok(new { success = true, companyName = client.CompanyName, balance = client.SmsCredits });
-    }
-
     [HttpPost("send")]
     public async Task<IActionResult> Send([FromBody] SendSmsRequest request)
     {

@@ -74,6 +74,12 @@ else
   "gatewayStatusCode": 401,
   "gatewayResponse": "..."
 }</code></pre>
+    <p class="api-doc-label">Insufficient balance response (HTTP 400)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "Insufficient Email balance.",
+  "balance": 0
+}</code></pre>
 </div>
 <div class="api-doc-block">
     <h3>2. Get Email balance</h3>
@@ -86,26 +92,6 @@ else
   "success": true,
   "companyName": "Denims",
   "balance": 150
-}</code></pre>
-</div>
-<div class="api-doc-block">
-    <h3>3. Report Email sent</h3>
-    <p>For clients who deliver email through their own gateway and only need Microplex to track usage. Call this once per email successfully delivered; each confirmed call deducts exactly 1 unit from the client's balance.</p>
-    <p><span class="api-method post">POST</span> <code>@baseUrl/api/email/report-sent</code></p>
-    <p class="api-doc-label">Sample request</p>
-    <pre class="code-block"><code>curl -X POST "@baseUrl/api/email/report-sent" \
-  -H "api_token: YOUR_API_KEY"</code></pre>
-    <p class="api-doc-label">Sample response</p>
-    <pre class="code-block"><code>{
-  "success": true,
-  "companyName": "Denims",
-  "balance": 149
-}</code></pre>
-    <p class="api-doc-label">Insufficient balance response (HTTP 400)</p>
-    <pre class="code-block"><code>{
-  "success": false,
-  "message": "Insufficient Email balance.",
-  "balance": 0
 }</code></pre>
     <p class="api-doc-label">Invalid API key response (HTTP 401)</p>
     <pre class="code-block"><code>{
