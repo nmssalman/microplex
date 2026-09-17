@@ -18,17 +18,38 @@ public sealed class ApiDocumentationController(ApplicationDbContext db) : Contro
         return View(clients);
     }
 
+    public async Task<IActionResult> Email()
+    {
+        var clients = await db.Clients.AsNoTracking()
+            .Where(x => x.UsesEmailSolution)
+            .OrderBy(x => x.CompanyName)
+            .ToListAsync();
+        return View(clients);
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateApiKey(Guid clientId)
     {
         var client = await db.Clients.FirstOrDefaultAsync(x => x.ClientId == clientId && x.UsesSmsSolution);
         if (client is null) return NotFound();
 
-        client.SmsApiKey = GenerateKey();
+        client.SmsApiKey = GenerateKey("smsapi_");
         await db.SaveChangesAsync();
         TempData["Success"] = $"New API key generated for {client.CompanyName}.";
         return RedirectToAction(nameof(Sms));
     }
 
-    private static string GenerateKey() => "smsapi_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateEmailApiKey(Guid clientId)
+    {
+        var client = await db.Clients.FirstOrDefaultAsync(x => x.ClientId == clientId && x.UsesEmailSolution);
+        if (client is null) return NotFound();
+
+        client.EmailApiKey = GenerateKey("emailapi_");
+        await db.SaveChangesAsync();
+        TempData["Success"] = $"New API key generated for {client.CompanyName}.";
+        return RedirectToAction(nameof(Email));
+    }
+
+    private static string GenerateKey(string prefix) => prefix + Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
 }

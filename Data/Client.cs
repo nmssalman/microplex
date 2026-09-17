@@ -25,5 +25,7 @@ public sealed class Client
     [Display(Name = "SMS Solution")] public bool UsesSmsSolution { get; set; }
     [Display(Name = "SMS Credits")] public int SmsCredits { get; set; }
     [StringLength(128), Display(Name = "SMS API Key")] public string? SmsApiKey { get; set; }
+    [Display(Name = "Email Credits")] public int EmailCredits { get; set; }
+    [StringLength(128), Display(Name = "Email API Key")] public string? EmailApiKey { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

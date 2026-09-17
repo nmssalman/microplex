@@ -1,0 +1,42 @@
+@model IReadOnlyList<Microplex.Web.Data.Client>
+@{ Layout = "_DashboardLayout"; ViewData["Title"] = "Email API"; }
+<section class="dashboard-heading"><div><span class="page-kicker">SOLUTIONS · EMAIL API</span><h1>Email credit management.</h1><p>Top up Email credits for every client with the Email solution enabled.</p></div><button type="button" class="soft-button" data-bs-toggle="modal" data-bs-target="#lowEmailCreditPreviewModal">View Sample Email</button></section>
+@if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
+@if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
+<section class="dashboard-card report-card">
+@if (Model.Count == 0)
+{
+    <div class="report-empty"><span>▣</span><h2>No Email clients yet</h2><p>Enable the Email solution for a client to manage their credits here.</p><a asp-controller="Clients" asp-action="Index" class="btn btn-admin-primary">View clients <span>→</span></a></div>
+}
+else
+{
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>Current Credits</th><th>Add Credits</th><th>Reset</th><th>Low Credit Alert</th></tr></thead><tbody>
+@{ var avatarColors = new[] { "blue", "purple", "green" }; }
+@for (var i = 0; i < Model.Count; i++)
+{
+    var client = Model[i];
+    <tr>
+        <td><span class="table-avatar @avatarColors[i % avatarColors.Length]">@client.CompanyName[0].ToString().ToUpperInvariant()</span><strong>@client.CompanyName</strong></td>
+        <td><strong class="credit-balance">@client.EmailCredits</strong></td>
+        <td><form asp-controller="Email" asp-action="AddCredit" method="post" class="credit-form"><input type="hidden" name="clientId" value="@client.ClientId" /><input type="number" name="amount" class="credit-input" min="1" step="1" placeholder="e.g. 500" required /><button type="submit" class="credit-add-button">Add Credit</button></form></td>
+        <td><form asp-controller="Email" asp-action="ResetCredit" method="post" onsubmit="return confirm('Reset @client.CompanyName\'s credit balance to 0?');"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-reset-button">Reset</button></form></td>
+        <td><form asp-controller="Email" asp-action="SendLowCreditAlert" method="post" onsubmit="return confirm('Send a low credit alert email to @client.CompanyName?');"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-alert-button">Send Low Credit Alert</button></form></td>
+    </tr>
+}
+    </tbody></table></div>
+}
+</section>
+
+<div class="modal fade" id="lowEmailCreditPreviewModal" tabindex="-1" aria-labelledby="lowEmailCreditPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content email-preview-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="lowEmailCreditPreviewModalLabel">Low Email Credit Alert &mdash; Sample</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe src="@Url.Action("PreviewLowCreditAlert")" class="email-preview-frame" title="Low Email credit alert sample email"></iframe>
+      </div>
+    </div>
+  </div>
+</div>

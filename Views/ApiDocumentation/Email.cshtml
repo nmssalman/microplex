@@ -1,0 +1,172 @@
+@model IReadOnlyList<Microplex.Web.Data.Client>
+@{
+    Layout = "_DashboardLayout";
+    ViewData["Title"] = "Email API Documentation";
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+}
+<section class="dashboard-heading"><div><span class="page-kicker">API DOCUMENTATION · EMAIL API</span><h1>Email API keys &amp; integration.</h1><p>Generate an API key for each Email-enabled client, and share the integration guide below with their developers.</p></div></section>
+@if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
+@if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
+
+<section class="dashboard-card report-card mb-4">
+<div class="card-heading"><div><span class="page-kicker">STEP 1</span><h2>Generate API keys</h2></div></div>
+@if (Model.Count == 0)
+{
+    <div class="report-empty"><span>▣</span><h2>No Email clients yet</h2><p>Enable the Email solution for a client to issue an API key here.</p><a asp-controller="Clients" asp-action="Index" class="btn btn-admin-primary">View clients <span>→</span></a></div>
+}
+else
+{
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Client</th><th>API Key</th><th>Action</th></tr></thead><tbody>
+@{ var avatarColors = new[] { "blue", "purple", "green" }; }
+@for (var i = 0; i < Model.Count; i++)
+{
+    var client = Model[i];
+    <tr>
+        <td><span class="table-avatar @avatarColors[i % avatarColors.Length]">@client.CompanyName[0].ToString().ToUpperInvariant()</span><strong>@client.CompanyName</strong></td>
+        <td>@if (string.IsNullOrEmpty(client.EmailApiKey)) { <span class="api-key-empty">No key generated</span> } else { <div class="api-key-cell" data-key="@client.EmailApiKey"><code class="api-key-value masked">••••••••••••••••••••••••••••••••••••••••••••••••</code><button type="button" class="api-key-toggle-btn" data-action="toggle-key">Show</button><button type="button" class="api-key-icon-btn" data-action="copy-key" title="Copy API key" aria-label="Copy API key">⧉</button></div> }</td>
+        <td>@{ var hasKey = !string.IsNullOrEmpty(client.EmailApiKey); }<form asp-controller="ApiDocumentation" asp-action="GenerateEmailApiKey" method="post" onsubmit="@(hasKey ? "return confirm('Regenerating will invalidate the current API key. Continue?');" : "")"><input type="hidden" name="clientId" value="@client.ClientId" /><button type="submit" class="credit-add-button">@(hasKey ? "Regenerate Key" : "Generate API Key")</button></form></td>
+    </tr>
+}
+    </tbody></table></div>
+}
+</section>
+
+<section class="dashboard-card report-card">
+<div class="card-heading"><div><span class="page-kicker">STEP 2</span><h2>Integration guide</h2></div></div>
+<div class="api-doc-block">
+    <h3>Authentication</h3>
+    <p>Send the client's API key in an <code>api_token</code> header on every request (the <code>send</code> endpoint also accepts it as an <code>api_token</code> field in the JSON body). <code>X-Api-Key</code> is also accepted as an alternative header name.</p>
+</div>
+<div class="api-doc-block">
+    <h3>1. Send Email</h3>
+    <p>Delivers the email via our Email gateway and deducts exactly 1 unit from the client's balance on success. <code>sender_name</code> is optional and lets you customize the display name recipients see (defaults to your company name).</p>
+    <p><span class="api-method post">POST</span> <code>@baseUrl/api/email/send</code></p>
+    <p class="api-doc-label">Sample request</p>
+    <pre class="code-block"><code>curl -X POST "@baseUrl/api/email/send" \
+  -H "Content-Type: application/json" \
+  -H "api_token: YOUR_API_KEY" \
+  -d '{
+    "api_token": "YOUR_API_KEY",
+    "recipient": "customer@example.com",
+    "recipient_name": "John Doe",
+    "sender_name": "Denims",
+    "subject": "Your order has shipped",
+    "message": "&lt;p&gt;Hello, your order is on its way.&lt;/p&gt;"
+  }'</code></pre>
+    <p class="api-doc-label">Sample response</p>
+    <pre class="code-block"><code>{
+  "success": true,
+  "message_id": "a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d",
+  "recipient": "customer@example.com",
+  "status": "sent",
+  "balance": 149,
+  "gatewayResponse": "{\"messageId\":\"&lt;202609...@@smtp-relay.mailin.fr&gt;\"}"
+}</code></pre>
+    <p class="api-doc-label">Validation error response (HTTP 400)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "recipient is required."
+}</code></pre>
+    <p class="api-doc-label">Gateway rejected response (HTTP 502)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "The email gateway rejected the request.",
+  "gatewayStatusCode": 401,
+  "gatewayResponse": "..."
+}</code></pre>
+</div>
+<div class="api-doc-block">
+    <h3>2. Get Email balance</h3>
+    <p><span class="api-method get">GET</span> <code>@baseUrl/api/email/balance</code></p>
+    <p class="api-doc-label">Sample request</p>
+    <pre class="code-block"><code>curl -X GET "@baseUrl/api/email/balance" \
+  -H "api_token: YOUR_API_KEY"</code></pre>
+    <p class="api-doc-label">Sample response</p>
+    <pre class="code-block"><code>{
+  "success": true,
+  "companyName": "Denims",
+  "balance": 150
+}</code></pre>
+</div>
+<div class="api-doc-block">
+    <h3>3. Report Email sent</h3>
+    <p>For clients who deliver email through their own gateway and only need Microplex to track usage. Call this once per email successfully delivered; each confirmed call deducts exactly 1 unit from the client's balance.</p>
+    <p><span class="api-method post">POST</span> <code>@baseUrl/api/email/report-sent</code></p>
+    <p class="api-doc-label">Sample request</p>
+    <pre class="code-block"><code>curl -X POST "@baseUrl/api/email/report-sent" \
+  -H "api_token: YOUR_API_KEY"</code></pre>
+    <p class="api-doc-label">Sample response</p>
+    <pre class="code-block"><code>{
+  "success": true,
+  "companyName": "Denims",
+  "balance": 149
+}</code></pre>
+    <p class="api-doc-label">Insufficient balance response (HTTP 400)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "Insufficient Email balance.",
+  "balance": 0
+}</code></pre>
+    <p class="api-doc-label">Invalid API key response (HTTP 401)</p>
+    <pre class="code-block"><code>{
+  "success": false,
+  "message": "Invalid or missing API key."
+}</code></pre>
+</div>
+</section>
+@section Scripts {
+<script>
+    (function () {
+        var MASK = "••••••••••••••••••••••••••••••••••••••••••••••••";
+        document.addEventListener("click", function (event) {
+            var toggleBtn = event.target.closest('[data-action="toggle-key"]');
+            if (toggleBtn) {
+                var cell = toggleBtn.closest(".api-key-cell");
+                var codeEl = cell.querySelector(".api-key-value");
+                var isMasked = codeEl.classList.contains("masked");
+                if (isMasked) {
+                    codeEl.textContent = cell.dataset.key;
+                    codeEl.classList.remove("masked");
+                    toggleBtn.textContent = "Hide";
+                } else {
+                    codeEl.textContent = MASK;
+                    codeEl.classList.add("masked");
+                    toggleBtn.textContent = "Show";
+                }
+                return;
+            }
+
+            var copyBtn = event.target.closest('[data-action="copy-key"]');
+            if (copyBtn) {
+                var cell2 = copyBtn.closest(".api-key-cell");
+                var key = cell2.dataset.key;
+                var flash = function (text) {
+                    var original = copyBtn.textContent;
+                    copyBtn.textContent = text;
+                    setTimeout(function () { copyBtn.textContent = original; }, 1200);
+                };
+                var fallbackCopy = function () {
+                    var textarea = document.createElement("textarea");
+                    textarea.value = key;
+                    textarea.style.position = "fixed";
+                    textarea.style.opacity = "0";
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand("copy");
+                        flash("✓");
+                    } catch (err) {
+                        flash("!");
+                    }
+                    document.body.removeChild(textarea);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(key).then(function () { flash("✓"); }, fallbackCopy);
+                } else {
+                    fallbackCopy();
+                }
+            }
+        });
+    })();
+</script>
+}

@@ -33,17 +33,20 @@
                 <a asp-controller="Clients" asp-action="Create">Register Client</a>
                 <a asp-controller="Clients" asp-action="Index">Client Info Report</a>
             </div>
-            <button class="sidebar-link @(currentController == "Sms" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#solutionsMenu" aria-expanded="@(currentController == "Sms" ? "true" : "false")" aria-controls="solutionsMenu"><b>▤</b><span>Solutions</span><em>⌄</em></button>
-            <div class="collapse sidebar-submenu @(currentController == "Sms" ? "show" : "")" id="solutionsMenu">
+            <button class="sidebar-link @(currentController == "Sms" || currentController == "Email" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#solutionsMenu" aria-expanded="@(currentController == "Sms" || currentController == "Email" ? "true" : "false")" aria-controls="solutionsMenu"><b>▤</b><span>Solutions</span><em>⌄</em></button>
+            <div class="collapse sidebar-submenu @(currentController == "Sms" || currentController == "Email" ? "show" : "")" id="solutionsMenu">
                 <a asp-controller="Sms" asp-action="Index">SMS API</a>
+                <a asp-controller="Email" asp-action="Index">Email API</a>
             </div>
             <button class="sidebar-link @(currentController == "ApiDocumentation" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#apiDocsMenu" aria-expanded="@(currentController == "ApiDocumentation" ? "true" : "false")" aria-controls="apiDocsMenu"><b>⌨</b><span>API Documentation</span><em>⌄</em></button>
             <div class="collapse sidebar-submenu @(currentController == "ApiDocumentation" ? "show" : "")" id="apiDocsMenu">
                 <a asp-controller="ApiDocumentation" asp-action="Sms">SMS API</a>
+                <a asp-controller="ApiDocumentation" asp-action="Email">Email API</a>
             </div>
             <button class="sidebar-link @(currentController == "Insights" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#insightsMenu" aria-expanded="@(currentController == "Insights" ? "true" : "false")" aria-controls="insightsMenu"><b>◔</b><span>Insights</span><em>⌄</em></button>
             <div class="collapse sidebar-submenu @(currentController == "Insights" ? "show" : "")" id="insightsMenu">
                 <a asp-controller="Insights" asp-action="Sms">SMS Insight</a>
+                <a asp-controller="Insights" asp-action="Email">Email Insight</a>
             </div>
             <button class="sidebar-link" type="button"><b>◫</b><span>Projects</span><em>›</em></button>
             <button class="sidebar-link" type="button"><b>◧</b><span>Finance</span><em>›</em></button>

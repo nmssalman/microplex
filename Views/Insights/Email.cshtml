@@ -1,0 +1,59 @@
+@model Microplex.Web.Models.EmailInsightViewModel
+@{ Layout = "_DashboardLayout"; ViewData["Title"] = "Email Insight"; }
+<section class="dashboard-heading"><div><span class="page-kicker">INSIGHTS · EMAIL INSIGHT</span><h1>Email delivery report.</h1><p>Filter Email activity by company and date range.</p></div></section>
+
+<section class="dashboard-card report-card mb-4">
+<form method="get" class="insight-filters">
+    <div class="insight-filter-field">
+        <label class="form-label">Company</label>
+        <select name="companyId" class="admin-input">
+            <option value="">All Companies</option>
+@foreach (var company in Model.Companies)
+{
+    var isSelected = Model.SelectedClientId == company.ClientId;
+    <option value="@company.ClientId" selected="@(isSelected ? "selected" : null)">@company.CompanyName</option>
+}
+        </select>
+    </div>
+    <div class="insight-filter-field">
+        <label class="form-label">From</label>
+        <input type="date" name="from" value="@Model.FromDate.ToString("yyyy-MM-dd")" class="admin-input" />
+    </div>
+    <div class="insight-filter-field">
+        <label class="form-label">To</label>
+        <input type="date" name="to" value="@Model.ToDate.ToString("yyyy-MM-dd")" class="admin-input" />
+    </div>
+    <div class="insight-filter-actions">
+        <button type="submit" class="credit-add-button">Apply Filters</button>
+        <a asp-action="Email" class="soft-button">Reset</a>
+    </div>
+</form>
+</section>
+
+<section class="metric-grid insight-metric-grid" aria-label="Email summary">
+    <article class="metric-card metric-blue"><div class="metric-icon">◫</div><span>TOTAL ATTEMPTS</span><strong>@Model.Logs.Count</strong><small>In selected range</small></article>
+    <article class="metric-card metric-cyan"><div class="metric-icon">✓</div><span>SENT</span><strong>@Model.TotalSent</strong><small>Delivered successfully</small></article>
+    <article class="metric-card metric-coral"><div class="metric-icon">!</div><span>FAILED</span><strong>@Model.TotalFailed</strong><small>Insufficient balance or gateway error</small></article>
+</section>
+
+<section class="dashboard-card report-card">
+@if (Model.Logs.Count == 0)
+{
+    <div class="report-empty"><span>▣</span><h2>No Email activity found</h2><p>Try a different company or date range.</p></div>
+}
+else
+{
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Date &amp; Time</th><th>Company</th><th>Recipient</th><th>Subject</th><th>Status</th></tr></thead><tbody>
+@foreach (var log in Model.Logs)
+{
+    <tr>
+        <td>@Microplex.Web.Utilities.SriLankaTime.FromUtc(log.SentAtUtc).ToString("dd MMM yyyy, hh:mm tt")</td>
+        <td><strong>@(log.Client?.CompanyName ?? "—")</strong></td>
+        <td>@log.Recipient</td>
+        <td class="insight-message-cell" title="@log.Subject">@log.Subject</td>
+        <td>@if (log.Success) { <span class="status-pill">Sent</span> } else { <span class="status-pill failed" title="@log.FailureReason">Failed</span> }</td>
+    </tr>
+}
+    </tbody></table></div>
+}
+</section>
