@@ -410,3 +410,81 @@ def test_check_email_balance_missing_balance_field_is_fail():
     results = rc.check_email_balance(config, session)
 
     assert results[0].status == rc.FAIL
+
+
+def _other_features_fake_request(login_status=200, protected_status=302, protected_location="/Account/Login", unknown_status=404):
+    def fake_request(method, url, timeout=None, allow_redirects=None, **kwargs):
+        if url.endswith("/Account/Login"):
+            return MagicMock(status_code=login_status)
+        if url.endswith("/this-does-not-exist-12345"):
+            return MagicMock(status_code=unknown_status)
+        return MagicMock(status_code=protected_status, headers={"Location": protected_location})
+
+    return fake_request
+
+
+def test_check_other_features_all_good():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = _other_features_fake_request()
+
+    results = rc.check_other_features(config, session)
+
+    assert len(results) == 2 + len(rc.PROTECTED_PATHS)
+    assert all(r.status == rc.PASS for r in results)
+
+
+def test_check_other_features_detects_auth_gate_regression():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = _other_features_fake_request(protected_status=200, protected_location="")
+
+    results = rc.check_other_features(config, session)
+
+    gate_results = [r for r in results if r.name.startswith("Auth gate")]
+    assert len(gate_results) == len(rc.PROTECTED_PATHS)
+    assert all(r.status == rc.FAIL for r in gate_results)
+
+
+def test_check_other_features_500_on_unknown_path_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = _other_features_fake_request(unknown_status=500)
+
+    results = rc.check_other_features(config, session)
+
+    unknown_result = next(r for r in results if r.name == "Unknown path handling")
+    assert unknown_result.status == rc.FAIL
+
+
+def test_check_other_features_login_page_down_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = _other_features_fake_request(login_status=500)
+
+    results = rc.check_other_features(config, session)
+
+    login_result = next(r for r in results if r.name == "Login page reachable")
+    assert login_result.status == rc.FAIL
+
+
+def test_check_other_features_exception_on_any_request_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = requests.Timeout("timed out")
+
+    results = rc.check_other_features(config, session)
+
+    assert all(r.status == rc.FAIL for r in results)
+    assert all("timed out" in r.detail for r in results)
+
+
+def test_check_other_features_unexpected_status_on_protected_path_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = _other_features_fake_request(protected_status=403, protected_location="")
+
+    results = rc.check_other_features(config, session)
+
+    gate_results = [r for r in results if r.name.startswith("Auth gate")]
+    assert all(r.status == rc.FAIL for r in gate_results)

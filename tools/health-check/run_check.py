@@ -234,3 +234,49 @@ def check_email_balance(config: Config, session: requests.Session) -> list[Resul
     if balance < config.email_low_balance_threshold:
         return [Result(category, name, WARNING, f"Balance low: {balance} credits", duration_ms)]
     return [Result(category, name, PASS, f"Balance: {balance} credits", duration_ms)]
+
+
+PROTECTED_PATHS = ["/Clients", "/Dashboard", "/ApiDocumentation/Sms"]
+
+
+def check_other_features(config: Config, session: requests.Session) -> list[Result]:
+    category = "Other Features"
+    results: list[Result] = []
+
+    login_url = config.base_url + "/Account/Login"
+    response, duration_ms, error = timed_request(session, "GET", login_url, config.request_timeout_s)
+    if error is not None:
+        results.append(Result(category, "Login page reachable", FAIL, error, duration_ms))
+    elif response.status_code != 200:
+        results.append(Result(category, "Login page reachable", FAIL, f"HTTP {response.status_code}", duration_ms))
+    else:
+        results.append(Result(category, "Login page reachable", PASS, f"HTTP 200 in {duration_ms}ms", duration_ms))
+
+    for path in PROTECTED_PATHS:
+        page_url = config.base_url + path
+        name = f"Auth gate on {path}"
+        response, duration_ms, error = timed_request(
+            session, "GET", page_url, config.request_timeout_s, allow_redirects=False
+        )
+        if error is not None:
+            results.append(Result(category, name, FAIL, error, duration_ms))
+            continue
+        location = response.headers.get("Location", "")
+        if response.status_code in (301, 302, 303, 307, 308) and "Account/Login" in location:
+            results.append(Result(category, name, PASS, f"Redirected to login ({response.status_code})", duration_ms))
+        elif response.status_code == 200:
+            results.append(Result(category, name, FAIL, "Protected page returned 200 without authentication", duration_ms))
+        else:
+            results.append(Result(category, name, FAIL, f"Unexpected HTTP {response.status_code}", duration_ms))
+
+    unknown_url = config.base_url + "/this-does-not-exist-12345"
+    name = "Unknown path handling"
+    response, duration_ms, error = timed_request(session, "GET", unknown_url, config.request_timeout_s)
+    if error is not None:
+        results.append(Result(category, name, FAIL, error, duration_ms))
+    elif response.status_code >= 500:
+        results.append(Result(category, name, FAIL, f"HTTP {response.status_code} on unknown path", duration_ms))
+    else:
+        results.append(Result(category, name, PASS, f"HTTP {response.status_code} on unknown path", duration_ms))
+
+    return results
