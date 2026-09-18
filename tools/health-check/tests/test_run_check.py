@@ -313,3 +313,89 @@ def test_check_sms_balance_missing_balance_field_is_fail():
     results = rc.check_sms_balance(config, session)
 
     assert results[0].status == rc.FAIL
+
+
+def test_check_email_send_pass():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, text='{"success": true}')
+
+    results = rc.check_email_send(config, session)
+
+    assert len(results) == 1
+    assert results[0].status == rc.PASS
+    assert results[0].category == "Email Send API"
+
+
+def test_check_email_send_insufficient_balance_is_warning():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(
+        status_code=400, text='{"success": false, "message": "Insufficient Email balance."}'
+    )
+
+    results = rc.check_email_send(config, session)
+
+    assert results[0].status == rc.WARNING
+
+
+def test_check_email_send_gateway_error_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=502, text='{"success": false}')
+
+    results = rc.check_email_send(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
+def test_check_email_balance_pass():
+    config = make_config(email_low_balance_threshold=10)
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, json=lambda: {"success": True, "balance": 50})
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.PASS
+    assert results[0].category == "Email Balance API"
+
+
+def test_check_email_balance_low_is_warning():
+    config = make_config(email_low_balance_threshold=10)
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, json=lambda: {"success": True, "balance": 2})
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.WARNING
+
+
+def test_check_email_balance_unauthorized_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=401, text='{"success": false}')
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
+def test_check_email_balance_exception_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = requests.Timeout("timed out")
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "timed out" in results[0].detail
+
+
+def test_check_email_balance_missing_balance_field_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, json=lambda: {"success": True})
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.FAIL
