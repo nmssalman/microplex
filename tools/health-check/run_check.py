@@ -6,6 +6,7 @@ See docs/superpowers/specs/2026-09-19-daily-health-check-design.md.
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -112,3 +113,40 @@ def check_public_site(config: Config, session: requests.Session) -> list[Result]
             continue
         results.append(Result("Public Site", name, PASS, f"HTTP 200 in {duration_ms}ms", duration_ms))
     return results
+
+
+TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
+
+
+def check_inquiry_email(config: Config, session: requests.Session) -> list[Result]:
+    category = "Solution Integration Email"
+    page_url = config.base_url + "/Home/Solutions"
+    page_response, page_ms, page_error = timed_request(session, "GET", page_url, config.request_timeout_s)
+    if page_error is not None:
+        return [Result(category, "Submit inquiry", FAIL, page_error, page_ms)]
+    if page_response.status_code != 200:
+        return [Result(category, "Submit inquiry", FAIL, f"HTTP {page_response.status_code} loading Solutions page", page_ms)]
+
+    match = TOKEN_RE.search(page_response.text)
+    if not match:
+        return [Result(category, "Submit inquiry", FAIL, "Antiforgery token not found on Solutions page", page_ms)]
+    token = match.group(1)
+
+    submit_url = config.base_url + "/Inquiry/Submit"
+    payload = {
+        "Service": "SMS Gateway",
+        "Email": config.qa_test_email,
+        "ReturnUrl": "/Home/Solutions",
+        "__RequestVerificationToken": token,
+    }
+    submit_response, submit_ms, submit_error = timed_request(
+        session, "POST", submit_url, config.request_timeout_s, data=payload, allow_redirects=True
+    )
+    total_ms = page_ms + submit_ms
+    if submit_error is not None:
+        return [Result(category, "Submit inquiry", FAIL, submit_error, total_ms)]
+    if submit_response.status_code >= 400:
+        return [Result(category, "Submit inquiry", FAIL, f"HTTP {submit_response.status_code}", total_ms)]
+    if "alert-danger" in submit_response.text:
+        return [Result(category, "Submit inquiry", FAIL, "Inquiry form returned an error banner", total_ms)]
+    return [Result(category, "Submit inquiry", PASS, f"Inquiry accepted in {total_ms}ms", total_ms)]

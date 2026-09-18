@@ -140,3 +140,66 @@ def test_check_public_site_exception_is_fail():
 
     assert all(r.status == rc.FAIL for r in results)
     assert "timed out" in results[0].detail
+
+
+TOKEN_HTML = '<input name="__RequestVerificationToken" type="hidden" value="tok123" />'
+
+
+def test_check_inquiry_email_pass():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    get_response = MagicMock(status_code=200, text=TOKEN_HTML)
+    post_response = MagicMock(status_code=200, text="<div>Thanks for reaching out!</div>")
+    session.request.side_effect = [get_response, post_response]
+
+    results = rc.check_inquiry_email(config, session)
+
+    assert len(results) == 1
+    assert results[0].status == rc.PASS
+    assert results[0].category == "Solution Integration Email"
+
+
+def test_check_inquiry_email_missing_token_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, text="<html>no token here</html>")
+
+    results = rc.check_inquiry_email(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "token" in results[0].detail.lower()
+
+
+def test_check_inquiry_email_page_load_failure_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=500, text="error")
+
+    results = rc.check_inquiry_email(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "500" in results[0].detail
+
+
+def test_check_inquiry_email_error_banner_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    get_response = MagicMock(status_code=200, text=TOKEN_HTML)
+    post_response = MagicMock(status_code=200, text='<div class="alert-danger">Something went wrong</div>')
+    session.request.side_effect = [get_response, post_response]
+
+    results = rc.check_inquiry_email(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
+def test_check_inquiry_email_submit_exception_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    get_response = MagicMock(status_code=200, text=TOKEN_HTML)
+    session.request.side_effect = [get_response, requests.ConnectionError("no route")]
+
+    results = rc.check_inquiry_email(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "no route" in results[0].detail
