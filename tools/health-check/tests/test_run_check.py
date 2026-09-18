@@ -603,3 +603,65 @@ def test_send_report_network_error(mock_post):
 
     assert sent is False
     assert "no network" in error
+
+
+def _set_required_env(monkeypatch):
+    for key, value in REQUIRED_ENV.items():
+        monkeypatch.setenv(key, value)
+
+
+def test_checks_run_in_user_requested_order():
+    assert rc.CHECKS == [
+        rc.check_public_site,
+        rc.check_inquiry_email,
+        rc.check_sms_send,
+        rc.check_sms_balance,
+        rc.check_email_send,
+        rc.check_email_balance,
+        rc.check_other_features,
+    ]
+
+
+def test_main_dry_run_writes_report(tmp_path, monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setattr(rc, "run_all_checks", lambda config: [rc.Result("c", "a", rc.PASS, "ok", 10)])
+    output_path = tmp_path / "report.html"
+
+    exit_code = rc.main(["--dry-run", "--output", str(output_path)])
+
+    assert exit_code == 0
+    assert output_path.exists()
+    assert "Microplex Daily Health Check" in output_path.read_text()
+
+
+def test_main_returns_nonzero_when_send_fails(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setattr(rc, "run_all_checks", lambda config: [rc.Result("c", "a", rc.FAIL, "boom", 10)])
+    monkeypatch.setattr(rc, "send_report", lambda config, html_body, subject: (False, "brevo down"))
+
+    exit_code = rc.main([])
+
+    assert exit_code == 1
+
+
+def test_main_returns_zero_when_checks_fail_but_send_succeeds(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setattr(rc, "run_all_checks", lambda config: [rc.Result("c", "a", rc.FAIL, "boom", 10)])
+    monkeypatch.setattr(rc, "send_report", lambda config, html_body, subject: (True, ""))
+
+    exit_code = rc.main([])
+
+    assert exit_code == 0
+
+
+def test_run_all_checks_aggregates_all_categories():
+    config = make_config()
+    session_results = [rc.Result("c", "a", rc.PASS, "ok", 1)]
+    monkeypatched = [lambda c, s: session_results for _ in rc.CHECKS]
+    original_checks = rc.CHECKS
+    rc.CHECKS = monkeypatched
+    try:
+        results = rc.run_all_checks(config)
+    finally:
+        rc.CHECKS = original_checks
+    assert len(results) == len(monkeypatched)

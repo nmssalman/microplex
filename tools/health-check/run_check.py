@@ -5,9 +5,11 @@ See docs/superpowers/specs/2026-09-19-daily-health-check-design.md.
 """
 from __future__ import annotations
 
+import argparse
 import html as html_module
 import os
 import re
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -377,3 +379,61 @@ def send_report(config: Config, html_body: str, subject: str) -> tuple[bool, str
     if response.status_code >= 300:
         return False, f"Brevo returned HTTP {response.status_code}: {response.text[:300]}"
     return True, ""
+
+
+CHECKS = [
+    check_public_site,
+    check_inquiry_email,
+    check_sms_send,
+    check_sms_balance,
+    check_email_send,
+    check_email_balance,
+    check_other_features,
+]
+
+
+def run_all_checks(config: Config) -> list[Result]:
+    session = requests.Session()
+    results: list[Result] = []
+    for check in CHECKS:
+        results.extend(check(config, session))
+    return results
+
+
+def print_summary(results: list[Result]) -> None:
+    for r in results:
+        print(f"[{r.status:7}] {r.category} :: {r.name} — {r.detail} ({r.duration_ms}ms)")
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Microplex daily health check")
+    parser.add_argument("--dry-run", action="store_true", help="Write the report to --output instead of emailing it")
+    parser.add_argument("--output", default="health-check-report.html", help="Path to write the report in --dry-run mode")
+    args = parser.parse_args(argv)
+
+    config = Config.from_env()
+    results = run_all_checks(config)
+    print_summary(results)
+
+    generated_at = datetime.now(COLOMBO_TZ)
+    subject = build_subject(compute_overall_status(results), results)
+    report_html = render_html(results, generated_at, config.run_url)
+
+    if args.dry_run:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(report_html)
+        print(f"Dry run: report written to {args.output}")
+        return 0
+
+    sent, error = send_report(config, report_html, subject)
+    if not sent:
+        print(f"FAILED TO SEND REPORT: {error}", file=sys.stderr)
+        print("---- report body follows ----")
+        print(report_html)
+        return 1
+    print("Report sent successfully.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
