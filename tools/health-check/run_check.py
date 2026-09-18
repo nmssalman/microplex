@@ -79,3 +79,36 @@ def timed_request(
     except requests.RequestException as exc:
         duration_ms = int((time.monotonic() - start) * 1000)
         return None, duration_ms, str(exc)
+
+
+PUBLIC_PAGES = [
+    ("/", "Microplex"),
+    ("/Home/About", "Microplex"),
+    ("/Home/Solutions", "SMS GATEWAY"),
+    ("/Home/Contact", "Contact"),
+    ("/Home/Privacy", "Privacy"),
+]
+
+
+def check_public_site(config: Config, session: requests.Session) -> list[Result]:
+    results: list[Result] = []
+    for path, marker in PUBLIC_PAGES:
+        url = config.base_url + path
+        name = f"GET {path}"
+        response, duration_ms, error = timed_request(session, "GET", url, config.request_timeout_s)
+        if error is not None:
+            results.append(Result("Public Site", name, FAIL, error, duration_ms))
+            continue
+        if response.status_code != 200:
+            results.append(Result("Public Site", name, FAIL, f"HTTP {response.status_code}", duration_ms))
+            continue
+        if marker not in response.text:
+            results.append(
+                Result("Public Site", name, WARNING, f"Expected marker '{marker}' not found", duration_ms)
+            )
+            continue
+        if duration_ms > config.slow_response_ms:
+            results.append(Result("Public Site", name, WARNING, f"Slow response ({duration_ms}ms)", duration_ms))
+            continue
+        results.append(Result("Public Site", name, PASS, f"HTTP 200 in {duration_ms}ms", duration_ms))
+    return results

@@ -94,3 +94,49 @@ def test_timed_request_forwards_extra_kwargs():
     session.request.assert_called_once_with(
         "POST", "https://x.test/", timeout=5.0, json={"a": 1}, headers={"h": "v"}
     )
+
+
+def test_check_public_site_all_pass_when_pages_ok():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(
+        status_code=200, text="Microplex SMS GATEWAY Contact Privacy"
+    )
+
+    results = rc.check_public_site(config, session)
+
+    assert len(results) == len(rc.PUBLIC_PAGES)
+    assert all(r.status == rc.PASS for r in results)
+    assert all(r.category == "Public Site" for r in results)
+
+
+def test_check_public_site_missing_marker_is_warning():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, text="nothing relevant here")
+
+    results = rc.check_public_site(config, session)
+
+    assert all(r.status == rc.WARNING for r in results)
+
+
+def test_check_public_site_non_200_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=500, text="error")
+
+    results = rc.check_public_site(config, session)
+
+    assert all(r.status == rc.FAIL for r in results)
+    assert "500" in results[0].detail
+
+
+def test_check_public_site_exception_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = requests.Timeout("timed out")
+
+    results = rc.check_public_site(config, session)
+
+    assert all(r.status == rc.FAIL for r in results)
+    assert "timed out" in results[0].detail
