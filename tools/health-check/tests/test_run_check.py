@@ -488,3 +488,66 @@ def test_check_other_features_unexpected_status_on_protected_path_is_fail():
 
     gate_results = [r for r in results if r.name.startswith("Auth gate")]
     assert all(r.status == rc.FAIL for r in gate_results)
+
+
+def test_compute_overall_status_worst_wins():
+    results = [rc.Result("c", "a", rc.PASS, "", 1), rc.Result("c", "b", rc.WARNING, "", 1)]
+    assert rc.compute_overall_status(results) == rc.WARNING
+
+    results.append(rc.Result("c", "d", rc.FAIL, "", 1))
+    assert rc.compute_overall_status(results) == rc.FAIL
+
+
+def test_compute_overall_status_empty_is_pass():
+    assert rc.compute_overall_status([]) == rc.PASS
+
+
+def test_build_subject_all_passed():
+    results = [rc.Result("c", "a", rc.PASS, "", 1)]
+    assert rc.build_subject(rc.PASS, results) == "✅ Microplex Health Check — All Passed"
+
+
+def test_build_subject_warnings():
+    results = [rc.Result("c", "a", rc.WARNING, "", 1), rc.Result("c", "b", rc.WARNING, "", 1)]
+    assert rc.build_subject(rc.WARNING, results) == "⚠️ Microplex Health Check — 2 Warning(s)"
+
+
+def test_build_subject_failures():
+    results = [rc.Result("c", "a", rc.FAIL, "", 1)]
+    assert rc.build_subject(rc.FAIL, results) == "\U0001f534 Microplex Health Check — 1 Failed"
+
+
+def test_render_html_includes_names_categories_and_colors():
+    from datetime import datetime as dt
+
+    results = [
+        rc.Result("Public Site", "GET /", rc.PASS, "HTTP 200 in 120ms", 120),
+        rc.Result("SMS Send API", "POST /api/sms/send", rc.FAIL, "HTTP 502", 300),
+    ]
+
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert "GET /" in output
+    assert "Public Site" in output
+    assert "SMS Send API" in output
+    assert rc.STATUS_COLOR[rc.PASS] in output
+    assert rc.STATUS_COLOR[rc.FAIL] in output
+    assert "2026-09-19" in output
+
+
+def test_render_html_includes_run_link_when_provided():
+    from datetime import datetime as dt
+
+    results = [rc.Result("Public Site", "GET /", rc.PASS, "ok", 10)]
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "https://github.com/acme/microplex/actions/runs/123")
+
+    assert "https://github.com/acme/microplex/actions/runs/123" in output
+
+
+def test_render_html_omits_run_link_when_empty():
+    from datetime import datetime as dt
+
+    results = [rc.Result("Public Site", "GET /", rc.PASS, "ok", 10)]
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert "View this run" not in output

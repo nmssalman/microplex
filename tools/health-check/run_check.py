@@ -5,6 +5,7 @@ See docs/superpowers/specs/2026-09-19-daily-health-check-design.md.
 """
 from __future__ import annotations
 
+import html as html_module
 import os
 import re
 import time
@@ -280,3 +281,78 @@ def check_other_features(config: Config, session: requests.Session) -> list[Resu
         results.append(Result(category, name, PASS, f"HTTP {response.status_code} on unknown path", duration_ms))
 
     return results
+
+
+def compute_overall_status(results: list[Result]) -> str:
+    if not results:
+        return PASS
+    return max((r.status for r in results), key=lambda s: STATUS_RANK[s])
+
+
+def build_subject(overall_status: str, results: list[Result]) -> str:
+    warnings = sum(1 for r in results if r.status == WARNING)
+    failures = sum(1 for r in results if r.status == FAIL)
+    if overall_status == PASS:
+        return "✅ Microplex Health Check — All Passed"
+    if overall_status == WARNING:
+        return f"⚠️ Microplex Health Check — {warnings} Warning(s)"
+    return f"\U0001f534 Microplex Health Check — {failures} Failed"
+
+
+def _render_row(r: Result) -> str:
+    return (
+        '<tr style="border-bottom:1px solid #e5e7eb;">'
+        f'<td style="padding:8px 4px;font:14px system-ui;color:#111827;">{html_module.escape(r.name)}</td>'
+        '<td style="padding:8px 4px;white-space:nowrap;">'
+        f'<span style="padding:3px 10px;border-radius:999px;color:#fff;font:600 12px system-ui;'
+        f'background:{STATUS_COLOR[r.status]};">{r.status}</span></td>'
+        f'<td style="padding:8px 4px;font:13px system-ui;color:#6b7280;">'
+        f'{html_module.escape(r.detail)} ({r.duration_ms}ms)</td>'
+        '</tr>'
+    )
+
+
+def render_html(results: list[Result], generated_at: datetime, run_url: str) -> str:
+    overall = compute_overall_status(results)
+    passed = sum(1 for r in results if r.status == PASS)
+    warnings = sum(1 for r in results if r.status == WARNING)
+    failures = sum(1 for r in results if r.status == FAIL)
+
+    seen_categories: list[str] = []
+    for r in results:
+        if r.category not in seen_categories:
+            seen_categories.append(r.category)
+
+    sections = []
+    for category in seen_categories:
+        rows = "".join(_render_row(r) for r in results if r.category == category)
+        sections.append(
+            f'<h2 style="font:600 16px system-ui;margin:24px 0 8px;color:#111827;">'
+            f'{html_module.escape(category)}</h2>'
+            f'<table style="width:100%;border-collapse:collapse;">{rows}</table>'
+        )
+
+    run_link = ""
+    if run_url:
+        run_link = (
+            f'<p style="font:12px system-ui;color:#6b7280;margin-top:24px;">'
+            f'<a href="{html_module.escape(run_url)}" style="color:#6b7280;">View this run</a></p>'
+        )
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:24px;background:#f3f4f6;font-family:system-ui,-apple-system,sans-serif;">
+<div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:8px;padding:24px;">
+  <h1 style="font-size:20px;margin:0 0 8px;color:#111827;">Microplex Daily Health Check</h1>
+  <p style="font:14px system-ui;color:#6b7280;margin:0 0 16px;">
+    {generated_at.strftime('%Y-%m-%d %H:%M')} (Asia/Colombo)
+  </p>
+  <div style="display:inline-block;padding:6px 14px;border-radius:999px;color:#fff;font:600 13px system-ui;background:{STATUS_COLOR[overall]};">
+    {overall}
+  </div>
+  <p style="font:14px system-ui;color:#374151;margin-top:12px;">
+    {passed} passed &middot; {warnings} warning(s) &middot; {failures} failed
+  </p>
+  {''.join(sections)}
+  {run_link}
+</div>
+</body></html>"""
