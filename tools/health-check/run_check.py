@@ -356,3 +356,24 @@ def render_html(results: list[Result], generated_at: datetime, run_url: str) -> 
   {run_link}
 </div>
 </body></html>"""
+
+
+def send_report(config: Config, html_body: str, subject: str) -> tuple[bool, str]:
+    payload = {
+        "sender": {"name": "Microplex Corporation", "email": "info@microplex.lk"},
+        "to": [{"email": config.report_recipient}],
+        "subject": subject,
+        "htmlContent": html_body,
+    }
+    try:
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers={"api-key": config.brevo_api_key, "accept": "application/json"},
+            timeout=config.request_timeout_s,
+        )
+    except requests.RequestException as exc:
+        return False, str(exc)
+    if response.status_code >= 300:
+        return False, f"Brevo returned HTTP {response.status_code}: {response.text[:300]}"
+    return True, ""

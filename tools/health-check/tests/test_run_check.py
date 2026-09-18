@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
@@ -566,3 +566,40 @@ def test_render_html_escapes_html_in_result_fields():
     assert "Cat &amp; Co" in output
     assert "Tom & Jerry" not in output
     assert "Cat & Co" not in output
+
+
+@patch("run_check.requests.post")
+def test_send_report_success(mock_post):
+    mock_post.return_value = MagicMock(status_code=201)
+    config = make_config()
+
+    sent, error = rc.send_report(config, "<html></html>", "Subject")
+
+    assert sent is True
+    assert error == ""
+    _, kwargs = mock_post.call_args
+    assert kwargs["headers"]["api-key"] == "brevo-key"
+    assert kwargs["json"]["subject"] == "Subject"
+    assert kwargs["json"]["to"] == [{"email": "report@example.test"}]
+
+
+@patch("run_check.requests.post")
+def test_send_report_failure_status(mock_post):
+    mock_post.return_value = MagicMock(status_code=400, text="bad request")
+    config = make_config()
+
+    sent, error = rc.send_report(config, "<html></html>", "Subject")
+
+    assert sent is False
+    assert "400" in error
+
+
+@patch("run_check.requests.post")
+def test_send_report_network_error(mock_post):
+    mock_post.side_effect = requests.ConnectionError("no network")
+    config = make_config()
+
+    sent, error = rc.send_report(config, "<html></html>", "Subject")
+
+    assert sent is False
+    assert "no network" in error
