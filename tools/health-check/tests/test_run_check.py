@@ -1,4 +1,7 @@
+from unittest.mock import MagicMock
+
 import pytest
+import requests
 
 import run_check as rc
 
@@ -56,3 +59,38 @@ def test_config_from_env_builds_run_url_from_github_vars():
 def test_config_from_env_run_url_empty_when_not_in_actions():
     config = rc.Config.from_env(dict(REQUIRED_ENV))
     assert config.run_url == ""
+
+
+def test_timed_request_success_returns_response_and_no_error():
+    session = MagicMock(spec=requests.Session)
+    fake_response = MagicMock(status_code=200)
+    session.request.return_value = fake_response
+
+    response, duration_ms, error = rc.timed_request(session, "GET", "https://x.test/", 5.0)
+
+    assert response is fake_response
+    assert error is None
+    assert duration_ms >= 0
+    session.request.assert_called_once_with("GET", "https://x.test/", timeout=5.0)
+
+
+def test_timed_request_handles_request_exception():
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = requests.ConnectionError("boom")
+
+    response, duration_ms, error = rc.timed_request(session, "GET", "https://x.test/", 5.0)
+
+    assert response is None
+    assert error == "boom"
+    assert duration_ms >= 0
+
+
+def test_timed_request_forwards_extra_kwargs():
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200)
+
+    rc.timed_request(session, "POST", "https://x.test/", 5.0, json={"a": 1}, headers={"h": "v"})
+
+    session.request.assert_called_once_with(
+        "POST", "https://x.test/", timeout=5.0, json={"a": 1}, headers={"h": "v"}
+    )

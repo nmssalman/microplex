@@ -6,9 +6,12 @@ See docs/superpowers/specs/2026-09-19-daily-health-check-design.md.
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from typing import Optional
 from zoneinfo import ZoneInfo
+
+import requests
 
 COLOMBO_TZ = ZoneInfo("Asia/Colombo")
 
@@ -63,3 +66,16 @@ class Config:
             report_recipient=e["REPORT_RECIPIENT"],
             run_url=run_url,
         )
+
+
+def timed_request(
+    session: requests.Session, method: str, url: str, timeout: float, **kwargs
+) -> tuple[Optional[requests.Response], int, Optional[str]]:
+    start = time.monotonic()
+    try:
+        response = session.request(method, url, timeout=timeout, **kwargs)
+        duration_ms = int((time.monotonic() - start) * 1000)
+        return response, duration_ms, None
+    except requests.RequestException as exc:
+        duration_ms = int((time.monotonic() - start) * 1000)
+        return None, duration_ms, str(exc)
