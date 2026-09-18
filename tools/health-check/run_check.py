@@ -9,6 +9,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -150,3 +151,45 @@ def check_inquiry_email(config: Config, session: requests.Session) -> list[Resul
     if "alert-danger" in submit_response.text:
         return [Result(category, "Submit inquiry", FAIL, "Inquiry form returned an error banner", total_ms)]
     return [Result(category, "Submit inquiry", PASS, f"Inquiry accepted in {total_ms}ms", total_ms)]
+
+
+def check_sms_send(config: Config, session: requests.Session) -> list[Result]:
+    category = "SMS Send API"
+    name = "POST /api/sms/send"
+    url = config.base_url + "/api/sms/send"
+    headers = {"api_token": config.qa_sms_api_key}
+    payload = {
+        "recipient": config.qa_test_phone,
+        "sender_id": config.qa_sms_sender_id,
+        "type": "plain",
+        "message": f"Microplex health check {datetime.utcnow().isoformat(timespec='seconds')}Z",
+    }
+    response, duration_ms, error = timed_request(
+        session, "POST", url, config.request_timeout_s, json=payload, headers=headers
+    )
+    if error is not None:
+        return [Result(category, name, FAIL, error, duration_ms)]
+    if response.status_code == 200:
+        return [Result(category, name, PASS, f"Sent in {duration_ms}ms", duration_ms)]
+    if response.status_code == 400 and "balance" in response.text.lower():
+        return [Result(category, name, WARNING, "Insufficient SMS balance — top up the QA client", duration_ms)]
+    return [Result(category, name, FAIL, f"HTTP {response.status_code}: {response.text[:200]}", duration_ms)]
+
+
+def check_sms_balance(config: Config, session: requests.Session) -> list[Result]:
+    category = "SMS Balance API"
+    name = "GET /api/sms/balance"
+    url = config.base_url + "/api/sms/balance"
+    headers = {"api_token": config.qa_sms_api_key}
+    response, duration_ms, error = timed_request(session, "GET", url, config.request_timeout_s, headers=headers)
+    if error is not None:
+        return [Result(category, name, FAIL, error, duration_ms)]
+    if response.status_code != 200:
+        return [Result(category, name, FAIL, f"HTTP {response.status_code}: {response.text[:200]}", duration_ms)]
+    body = response.json()
+    balance = body.get("balance")
+    if balance is None:
+        return [Result(category, name, FAIL, "Response missing 'balance' field", duration_ms)]
+    if balance < config.sms_low_balance_threshold:
+        return [Result(category, name, WARNING, f"Balance low: {balance} credits", duration_ms)]
+    return [Result(category, name, PASS, f"Balance: {balance} credits", duration_ms)]
