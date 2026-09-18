@@ -203,3 +203,16 @@ def test_check_inquiry_email_submit_exception_is_fail():
 
     assert results[0].status == rc.FAIL
     assert "no route" in results[0].detail
+
+
+def test_check_inquiry_email_submit_http_error_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    get_response = MagicMock(status_code=200, text=TOKEN_HTML)
+    post_response = MagicMock(status_code=400, text="Bad Request")
+    session.request.side_effect = [get_response, post_response]
+
+    results = rc.check_inquiry_email(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "400" in results[0].detail
