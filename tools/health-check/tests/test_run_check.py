@@ -551,3 +551,16 @@ def test_render_html_omits_run_link_when_empty():
     output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
 
     assert "View this run" not in output
+
+
+def test_render_html_escapes_html_in_result_fields():
+    from datetime import datetime as dt
+
+    results = [rc.Result("Cat & Co", "<script>alert(1)</script>", rc.FAIL, "Tom & Jerry", 5)]
+
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert "<script>" not in output
+    assert "&lt;script&gt;" in output
+    assert "Tom &amp; Jerry" in output
+    assert "Cat &amp; Co" in output
