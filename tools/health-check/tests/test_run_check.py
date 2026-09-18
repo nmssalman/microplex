@@ -349,6 +349,17 @@ def test_check_email_send_gateway_error_is_fail():
     assert results[0].status == rc.FAIL
 
 
+def test_check_email_send_exception_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.side_effect = requests.Timeout("timed out")
+
+    results = rc.check_email_send(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "timed out" in results[0].detail
+
+
 def test_check_email_balance_pass():
     config = make_config(email_low_balance_threshold=10)
     session = MagicMock(spec=requests.Session)
