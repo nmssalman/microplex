@@ -1,0 +1,32 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    - cron: "35 22 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r tools/health-check/requirements.txt
+
+      - name: Run health check
+        env:
+          BASE_URL: https://microplex.lk
+          QA_SMS_API_KEY: ${{ secrets.QA_SMS_API_KEY }}
+          QA_EMAIL_API_KEY: ${{ secrets.QA_EMAIL_API_KEY }}
+          QA_TEST_PHONE: ${{ secrets.QA_TEST_PHONE }}
+          QA_TEST_EMAIL: ${{ secrets.QA_TEST_EMAIL }}
+          QA_SMS_SENDER_ID: ${{ secrets.QA_SMS_SENDER_ID }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          REPORT_RECIPIENT: ${{ secrets.REPORT_RECIPIENT }}
+        run: python tools/health-check/run_check.py
