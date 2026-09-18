@@ -12,7 +12,7 @@ import re
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -87,10 +87,10 @@ def timed_request(
 
 
 PUBLIC_PAGES = [
-    ("/", "Microplex"),
-    ("/Home/About", "Microplex"),
+    ("/", "BUILT IN SRI LANKA"),
+    ("/Home/About", "ABOUT MICROPLEX"),
     ("/Home/Solutions", "SMS GATEWAY"),
-    ("/Home/Contact", "Contact"),
+    ("/Home/Contact", "CONTACT MICROPLEX"),
     ("/Home/Privacy", "Privacy"),
 ]
 
@@ -152,8 +152,41 @@ def check_inquiry_email(config: Config, session: requests.Session) -> list[Resul
     if submit_response.status_code >= 400:
         return [Result(category, "Submit inquiry", FAIL, f"HTTP {submit_response.status_code}", total_ms)]
     if "alert-danger" in submit_response.text:
-        return [Result(category, "Submit inquiry", FAIL, "Inquiry form returned an error banner", total_ms)]
+        snippet = submit_response.text.strip()[:200]
+        return [
+            Result(
+                category,
+                "Submit inquiry",
+                FAIL,
+                f"Inquiry form returned an error banner: {snippet}",
+                total_ms,
+            )
+        ]
     return [Result(category, "Submit inquiry", PASS, f"Inquiry accepted in {total_ms}ms", total_ms)]
+
+
+API_TOKEN_RE = re.compile(r'api_token["\s:=]+[^\s,}"]+', re.IGNORECASE)
+
+
+def _redact_api_token(text: str) -> str:
+    """Strip anything that looks like an echoed api_token before it lands in a report or log."""
+    return API_TOKEN_RE.sub("api_token=[REDACTED]", text)
+
+
+def _safe_gateway_error_detail(response: requests.Response) -> str:
+    """Build a FAIL detail from a gateway error response without echoing a raw api_token.
+
+    Prefers a JSON 'message' field (smaller surface area than the whole body); falls back to
+    the truncated raw text when the body isn't JSON or has no 'message'. Either way, anything
+    matching an api_token pattern is redacted before it's returned.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return _redact_api_token(response.text[:200])
+    if isinstance(body, dict) and isinstance(body.get("message"), str):
+        return _redact_api_token(body["message"][:200])
+    return _redact_api_token(response.text[:200])
 
 
 def check_sms_send(config: Config, session: requests.Session) -> list[Result]:
@@ -165,7 +198,7 @@ def check_sms_send(config: Config, session: requests.Session) -> list[Result]:
         "recipient": config.qa_test_phone,
         "sender_id": config.qa_sms_sender_id,
         "type": "plain",
-        "message": f"Microplex health check {datetime.utcnow().isoformat(timespec='seconds')}Z",
+        "message": f"Microplex health check {datetime.now(timezone.utc).isoformat(timespec='seconds')}Z",
     }
     response, duration_ms, error = timed_request(
         session, "POST", url, config.request_timeout_s, json=payload, headers=headers
@@ -176,7 +209,7 @@ def check_sms_send(config: Config, session: requests.Session) -> list[Result]:
         return [Result(category, name, PASS, f"Sent in {duration_ms}ms", duration_ms)]
     if response.status_code == 400 and "balance" in response.text.lower():
         return [Result(category, name, WARNING, "Insufficient SMS balance — top up the QA client", duration_ms)]
-    return [Result(category, name, FAIL, f"HTTP {response.status_code}: {response.text[:200]}", duration_ms)]
+    return [Result(category, name, FAIL, f"HTTP {response.status_code}: {_safe_gateway_error_detail(response)}", duration_ms)]
 
 
 def check_sms_balance(config: Config, session: requests.Session) -> list[Result]:
@@ -189,10 +222,15 @@ def check_sms_balance(config: Config, session: requests.Session) -> list[Result]
         return [Result(category, name, FAIL, error, duration_ms)]
     if response.status_code != 200:
         return [Result(category, name, FAIL, f"HTTP {response.status_code}: {response.text[:200]}", duration_ms)]
-    body = response.json()
+    try:
+        body = response.json()
+    except ValueError:
+        return [Result(category, name, FAIL, "Response body is not valid JSON", duration_ms)]
     balance = body.get("balance")
     if balance is None:
         return [Result(category, name, FAIL, "Response missing 'balance' field", duration_ms)]
+    if not isinstance(balance, (int, float)):
+        return [Result(category, name, FAIL, f"'balance' field is not numeric: {balance!r}", duration_ms)]
     if balance < config.sms_low_balance_threshold:
         return [Result(category, name, WARNING, f"Balance low: {balance} credits", duration_ms)]
     return [Result(category, name, PASS, f"Balance: {balance} credits", duration_ms)]
@@ -206,7 +244,7 @@ def check_email_send(config: Config, session: requests.Session) -> list[Result]:
     payload = {
         "recipient": config.qa_test_email,
         "subject": "Microplex health check",
-        "message": f"<p>Automated health check at {datetime.utcnow().isoformat(timespec='seconds')}Z</p>",
+        "message": f"<p>Automated health check at {datetime.now(timezone.utc).isoformat(timespec='seconds')}Z</p>",
     }
     response, duration_ms, error = timed_request(
         session, "POST", url, config.request_timeout_s, json=payload, headers=headers
@@ -217,7 +255,7 @@ def check_email_send(config: Config, session: requests.Session) -> list[Result]:
         return [Result(category, name, PASS, f"Sent in {duration_ms}ms", duration_ms)]
     if response.status_code == 400 and "balance" in response.text.lower():
         return [Result(category, name, WARNING, "Insufficient Email balance — top up the QA client", duration_ms)]
-    return [Result(category, name, FAIL, f"HTTP {response.status_code}: {response.text[:200]}", duration_ms)]
+    return [Result(category, name, FAIL, f"HTTP {response.status_code}: {_safe_gateway_error_detail(response)}", duration_ms)]
 
 
 def check_email_balance(config: Config, session: requests.Session) -> list[Result]:
@@ -230,10 +268,15 @@ def check_email_balance(config: Config, session: requests.Session) -> list[Resul
         return [Result(category, name, FAIL, error, duration_ms)]
     if response.status_code != 200:
         return [Result(category, name, FAIL, f"HTTP {response.status_code}: {response.text[:200]}", duration_ms)]
-    body = response.json()
+    try:
+        body = response.json()
+    except ValueError:
+        return [Result(category, name, FAIL, "Response body is not valid JSON", duration_ms)]
     balance = body.get("balance")
     if balance is None:
         return [Result(category, name, FAIL, "Response missing 'balance' field", duration_ms)]
+    if not isinstance(balance, (int, float)):
+        return [Result(category, name, FAIL, f"'balance' field is not numeric: {balance!r}", duration_ms)]
     if balance < config.email_low_balance_threshold:
         return [Result(category, name, WARNING, f"Balance low: {balance} credits", duration_ms)]
     return [Result(category, name, PASS, f"Balance: {balance} credits", duration_ms)]
@@ -396,7 +439,12 @@ def run_all_checks(config: Config) -> list[Result]:
     session = requests.Session()
     results: list[Result] = []
     for check in CHECKS:
-        results.extend(check(config, session))
+        try:
+            results.extend(check(config, session))
+        except Exception as exc:
+            results.append(
+                Result(check.__name__, check.__name__, FAIL, f"Check raised {type(exc).__name__}: {exc}", 0)
+            )
     return results
 
 

@@ -100,7 +100,8 @@ def test_check_public_site_all_pass_when_pages_ok():
     config = make_config()
     session = MagicMock(spec=requests.Session)
     session.request.return_value = MagicMock(
-        status_code=200, text="Microplex SMS GATEWAY Contact Privacy"
+        status_code=200,
+        text="BUILT IN SRI LANKA ABOUT MICROPLEX SMS GATEWAY CONTACT MICROPLEX Privacy",
     )
 
     results = rc.check_public_site(config, session)
@@ -252,6 +253,23 @@ def test_check_sms_send_gateway_error_is_fail():
     assert results[0].status == rc.FAIL
 
 
+def test_check_sms_send_gateway_error_redacts_api_token():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    leaked = "Upstream rejected request api_token=sms-key-super-secret for this account"
+    session.request.return_value = MagicMock(
+        status_code=502,
+        text=leaked,
+        json=MagicMock(side_effect=ValueError),
+    )
+
+    results = rc.check_sms_send(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "sms-key-super-secret" not in results[0].detail
+    assert "[REDACTED]" in results[0].detail
+
+
 def test_check_sms_send_exception_is_fail():
     config = make_config()
     session = MagicMock(spec=requests.Session)
@@ -315,6 +333,28 @@ def test_check_sms_balance_missing_balance_field_is_fail():
     assert results[0].status == rc.FAIL
 
 
+def test_check_sms_balance_non_json_body_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, json=MagicMock(side_effect=ValueError))
+
+    results = rc.check_sms_balance(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
+def test_check_sms_balance_non_numeric_balance_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(
+        status_code=200, json=lambda: {"success": True, "balance": "not-a-number"}
+    )
+
+    results = rc.check_sms_balance(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
 def test_check_email_send_pass():
     config = make_config()
     session = MagicMock(spec=requests.Session)
@@ -347,6 +387,23 @@ def test_check_email_send_gateway_error_is_fail():
     results = rc.check_email_send(config, session)
 
     assert results[0].status == rc.FAIL
+
+
+def test_check_email_send_gateway_error_redacts_api_token():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    leaked = "Upstream rejected request api_token: email-key-super-secret for this account"
+    session.request.return_value = MagicMock(
+        status_code=502,
+        text=leaked,
+        json=MagicMock(side_effect=ValueError),
+    )
+
+    results = rc.check_email_send(config, session)
+
+    assert results[0].status == rc.FAIL
+    assert "email-key-super-secret" not in results[0].detail
+    assert "[REDACTED]" in results[0].detail
 
 
 def test_check_email_send_exception_is_fail():
@@ -406,6 +463,28 @@ def test_check_email_balance_missing_balance_field_is_fail():
     config = make_config()
     session = MagicMock(spec=requests.Session)
     session.request.return_value = MagicMock(status_code=200, json=lambda: {"success": True})
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
+def test_check_email_balance_non_json_body_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(status_code=200, json=MagicMock(side_effect=ValueError))
+
+    results = rc.check_email_balance(config, session)
+
+    assert results[0].status == rc.FAIL
+
+
+def test_check_email_balance_non_numeric_balance_is_fail():
+    config = make_config()
+    session = MagicMock(spec=requests.Session)
+    session.request.return_value = MagicMock(
+        status_code=200, json=lambda: {"success": True, "balance": "not-a-number"}
+    )
 
     results = rc.check_email_balance(config, session)
 
@@ -665,3 +744,30 @@ def test_run_all_checks_aggregates_all_categories():
     finally:
         rc.CHECKS = original_checks
     assert len(results) == len(monkeypatched)
+
+
+def test_run_all_checks_survives_one_check_raising():
+    config = make_config()
+
+    def ok_check(c, s):
+        return [rc.Result("Public Site", "GET /", rc.PASS, "ok", 1)]
+
+    def exploding_check(c, s):
+        raise RuntimeError("boom: malformed response body")
+
+    def other_ok_check(c, s):
+        return [rc.Result("Email Balance API", "GET /api/email/balance", rc.PASS, "Balance: 50 credits", 1)]
+
+    original_checks = rc.CHECKS
+    rc.CHECKS = [ok_check, exploding_check, other_ok_check]
+    try:
+        results = rc.run_all_checks(config)
+    finally:
+        rc.CHECKS = original_checks
+
+    assert len(results) == 3
+    assert results[0].status == rc.PASS
+    assert results[2].status == rc.PASS
+    assert results[1].status == rc.FAIL
+    assert "RuntimeError" in results[1].detail
+    assert "boom: malformed response body" in results[1].detail
