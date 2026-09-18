@@ -564,3 +564,5 @@ def test_render_html_escapes_html_in_result_fields():
     assert "&lt;script&gt;" in output
     assert "Tom &amp; Jerry" in output
     assert "Cat &amp; Co" in output
+    assert "Tom & Jerry" not in output
+    assert "Cat & Co" not in output
