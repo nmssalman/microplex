@@ -23,6 +23,7 @@ public class Program
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         builder.Services.AddHttpClient<SmsGatewayClient>();
         builder.Services.AddHttpClient<EmailSender>();
+        builder.Services.AddHttpClient<InternalEmailApiClient>();
         builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;

@@ -7,7 +7,7 @@ using Microplex.Web.Services;
 namespace Microplex.Web.Controllers;
 
 [Authorize(Roles = IdentitySeeder.SuperAdminRole)]
-public sealed class SmsController(ApplicationDbContext db, EmailSender emailSender) : Controller
+public sealed class SmsController(ApplicationDbContext db, InternalEmailApiClient emailClient) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -63,7 +63,7 @@ public sealed class SmsController(ApplicationDbContext db, EmailSender emailSend
         var html = LowCreditEmailTemplateBuilder.Build(client.CompanyName, client.SmsCredits);
         try
         {
-            await emailSender.SendAsync(client.Email, "Low SMS Credit Alert", html);
+            await emailClient.SendAsync(client.Email, "Low SMS Credit Alert", html);
             TempData["Success"] = $"Low credit alert sent to {client.CompanyName} ({client.Email}).";
         }
         catch (InvalidOperationException ex)
