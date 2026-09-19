@@ -1,8 +1,8 @@
 # Daily Health Check
 
 Automated daily check of https://microplex.lk's public pages and SMS/Email
-gateway APIs. Runs via `.github/workflows/daily-health-check.yml` at ~7:03 AM
-Asia/Colombo every day, and emails a color-coded HTML report to the address
+gateway APIs. Runs via `.github/workflows/daily-health-check.yml` at ~5:03 PM
+UTC (~10:33 PM Asia/Colombo) every day, and emails a color-coded HTML report to the address
 in the `REPORT_RECIPIENT` secret.
 
 Full design: `docs/superpowers/specs/2026-09-19-daily-health-check-design.md`.
