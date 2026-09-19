@@ -1,0 +1,45 @@
+@model Microplex.Web.Models.ReportsViewModel
+@{ Layout = "_DashboardLayout"; ViewData["Title"] = "System Maintenance Reports"; }
+<section class="dashboard-heading"><div><span class="page-kicker">SYSTEM MAINTENANCE · REPORTS</span><h1>API failure history.</h1><p>Every recorded failure across the SMS and Email Gateway APIs, most recent first.</p></div></section>
+
+<section class="dashboard-card report-card mb-4">
+<form method="get" class="insight-filters">
+    <div class="insight-filter-field">
+        <label class="form-label">Service</label>
+        <select name="apiName" class="admin-input" onchange="this.form.submit()">
+            <option value="">All Services</option>
+@foreach (var name in Model.ApiNames)
+{
+    <option value="@name" selected="@(Model.SelectedApiName == name ? "selected" : null)">@name</option>
+}
+        </select>
+    </div>
+    <div class="insight-filter-actions">
+        <a asp-action="Reports" class="soft-button">Reset</a>
+    </div>
+</form>
+</section>
+
+<section class="metric-grid insight-metric-grid" aria-label="Failure summary">
+    <article class="metric-card metric-coral"><div class="metric-icon">!</div><span>TOTAL FAILURES SHOWN</span><strong>@Model.Incidents.Count</strong><small>Most recent 200</small></article>
+</section>
+
+<section class="dashboard-card report-card">
+@if (Model.Incidents.Count == 0)
+{
+    <div class="report-empty"><span>▣</span><h2>No failures recorded</h2><p>Nothing to show for the selected service &mdash; that's a good sign.</p></div>
+}
+else
+{
+    <div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Date &amp; Time (SLT)</th><th>Service</th><th>Error Message</th></tr></thead><tbody>
+@foreach (var incident in Model.Incidents)
+{
+    <tr>
+        <td>@Microplex.Web.Utilities.SriLankaTime.FromUtc(incident.OccurredAtUtc).ToString("dd MMM yyyy, hh:mm:ss tt")</td>
+        <td><strong>@incident.ApiName</strong><br /><small class="text-muted">@incident.MethodName</small></td>
+        <td class="insight-message-cell" title="@incident.ErrorMessage">@incident.ErrorMessage</td>
+    </tr>
+}
+    </tbody></table></div>
+}
+</section>

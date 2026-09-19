@@ -1,0 +1,37 @@
+@model List<Microplex.Web.Models.ManagementItemViewModel>
+@{ Layout = "_DashboardLayout"; ViewData["Title"] = "System Maintenance"; }
+<section class="dashboard-heading"><div><span class="page-kicker">SYSTEM MAINTENANCE · MANAGEMENT</span><h1>API status management.</h1><p>Review live health for the SMS and Email Gateway APIs, and mark an endpoint as fixed once you've resolved an issue.</p></div><a asp-controller="Status" asp-action="Index" target="_blank" class="soft-button">View Public Status Page ↗</a></section>
+@if (TempData["Success"] is string successMessage) { <div class="alert success-alert" role="status"><span>✓</span>@successMessage</div> }
+@if (TempData["Error"] is string errorMessage) { <div class="alert error-alert" role="alert"><span>!</span>@errorMessage</div> }
+
+<section class="dashboard-card report-card">
+<div class="client-table-wrap"><table class="table client-table align-middle mb-0"><thead><tr><th>Service</th><th>Endpoint</th><th>Status</th><th>Consecutive Failures</th><th>Last Checked (SLT)</th><th>Last Error</th><th>Action</th></tr></thead><tbody>
+@foreach (var item in Model)
+{
+    var (pillClass, pillLabel) = item.Status switch
+    {
+        Microplex.Web.Data.ApiHealthStatus.Stopped => ("failed", "Stopped"),
+        Microplex.Web.Data.ApiHealthStatus.Warning => ("warning", "Warning"),
+        _ => ("", "Operational")
+    };
+    <tr>
+        <td><strong>@item.ApiName</strong><br /><small class="text-muted">@item.MethodName</small></td>
+        <td><code class="status-endpoint">@item.Endpoint</code></td>
+        <td><span class="status-pill @pillClass">@pillLabel</span></td>
+        <td>@item.ConsecutiveFailures</td>
+        <td>@(item.LastCheckedAtUtc.HasValue ? Microplex.Web.Utilities.SriLankaTime.FromUtc(item.LastCheckedAtUtc.Value).ToString("dd MMM yyyy, hh:mm tt") : "—")</td>
+        <td class="insight-message-cell" title="@item.LastErrorMessage">@(item.LastErrorMessage ?? "—")</td>
+        <td>
+        @if (item.Status != Microplex.Web.Data.ApiHealthStatus.Operational && item.RecordId.HasValue)
+        {
+            <form asp-controller="SystemMaintenance" asp-action="MarkResolved" method="post" onsubmit="return confirm('Mark @item.ApiName @item.MethodName as fixed?');"><input type="hidden" name="recordId" value="@item.RecordId" /><button type="submit" class="credit-add-button">Mark as Fixed</button></form>
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+        </td>
+    </tr>
+}
+    </tbody></table></div>
+</section>

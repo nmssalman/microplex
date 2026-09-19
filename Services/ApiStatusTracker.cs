@@ -28,10 +28,17 @@ public sealed class ApiStatusTracker(ApplicationDbContext db, EmailSender emailS
         var previousStatus = record.Status;
         record.Status = record.ConsecutiveFailures switch
         {
-            0 => ApiHealthStatus.Operational,
             <= 3 => ApiHealthStatus.Warning,
             _ => ApiHealthStatus.Stopped
         };
+
+        db.ApiStatusIncidents.Add(new ApiStatusIncident
+        {
+            ApiName = apiName,
+            MethodName = methodName,
+            OccurredAtUtc = DateTime.UtcNow,
+            ErrorMessage = errorMessage.Length > 1000 ? errorMessage[..1000] : errorMessage
+        });
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -39,6 +46,17 @@ public sealed class ApiStatusTracker(ApplicationDbContext db, EmailSender emailS
         {
             await SendUrgentAlertAsync(apiName, methodName, record.ConsecutiveFailures, record.LastErrorMessage, cancellationToken);
         }
+    }
+
+    public async Task<bool> ResolveAsync(int recordId, CancellationToken cancellationToken = default)
+    {
+        var record = await db.ApiStatuses.FirstOrDefaultAsync(x => x.Id == recordId, cancellationToken);
+        if (record is null) return false;
+
+        record.ConsecutiveFailures = 0;
+        record.Status = ApiHealthStatus.Operational;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private async Task<ApiStatusRecord> GetOrCreateAsync(string apiName, string methodName, CancellationToken cancellationToken)

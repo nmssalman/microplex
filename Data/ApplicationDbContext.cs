@@ -10,6 +10,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<SmsMessageLog> SmsMessageLogs => Set<SmsMessageLog>();
     public DbSet<EmailMessageLog> EmailMessageLogs => Set<EmailMessageLog>();
     public DbSet<ApiStatusRecord> ApiStatuses => Set<ApiStatusRecord>();
+    public DbSet<ApiStatusIncident> ApiStatusIncidents => Set<ApiStatusIncident>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -49,6 +50,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.ApiName, x.MethodName }).IsUnique();
+        });
+        builder.Entity<ApiStatusIncident>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.HasIndex(x => x.OccurredAtUtc);
         });
     }
 }

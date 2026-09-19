@@ -48,6 +48,11 @@
                 <a asp-controller="Insights" asp-action="Sms">SMS Insight</a>
                 <a asp-controller="Insights" asp-action="Email">Email Insight</a>
             </div>
+            <button class="sidebar-link @(currentController == "SystemMaintenance" ? "active" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#maintenanceMenu" aria-expanded="@(currentController == "SystemMaintenance" ? "true" : "false")" aria-controls="maintenanceMenu"><b>⚑</b><span>System Maintenance</span><em>⌄</em></button>
+            <div class="collapse sidebar-submenu @(currentController == "SystemMaintenance" ? "show" : "")" id="maintenanceMenu">
+                <a asp-controller="SystemMaintenance" asp-action="Management">Management</a>
+                <a asp-controller="SystemMaintenance" asp-action="Reports">Reports</a>
+            </div>
             <button class="sidebar-link" type="button"><b>◫</b><span>Projects</span><em>›</em></button>
             <button class="sidebar-link" type="button"><b>◧</b><span>Finance</span><em>›</em></button>
             <button class="sidebar-link" type="button"><b>⌁</b><span>Reports</span><em>›</em></button>
