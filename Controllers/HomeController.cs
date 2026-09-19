@@ -18,6 +18,8 @@ public class HomeController : Controller
 
     public IActionResult Solutions() => View();
 
+    public IActionResult Academy() => View();
+
     public IActionResult Contact() => View();
 
     public IActionResult Privacy() => View();
