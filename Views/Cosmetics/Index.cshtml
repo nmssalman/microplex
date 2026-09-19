@@ -1,0 +1,224 @@
+@model IReadOnlyList<Microplex.Web.Models.CosmeticItem>
+@{
+    ViewData["Title"] = "Cosmetics";
+}
+<div class="cosmetics-page">
+<section class="cosmetics-hero"><div class="container"><span class="cosmetics-eyebrow">PREMIUM JAPANESE COSMETICS</span><h1>Authentic Japanese skincare,<br />delivered worldwide.</h1><p>We source premium quality cosmetics widely available in Japan and bring them to you &mdash; request a quotation and we&rsquo;ll reply on WhatsApp with pricing and shipping to your country.</p></div></section>
+
+@if (TempData["QuoteSuccess"] is string quoteSuccess) { <div class="container mt-3"><div class="alert alert-success" role="status">@quoteSuccess</div></div> }
+@if (TempData["QuoteError"] is string quoteError) { <div class="container mt-3"><div class="alert alert-danger" role="alert">@quoteError</div></div> }
+
+<section class="cosmetics-section"><div class="container">
+
+<div class="cosmetics-filters">
+  <div class="cosmetics-filter-field cosmetics-search">
+    <span aria-hidden="true">&#128269;</span>
+    <input type="search" id="cosmeticsSearch" placeholder="Search by name, brand, or category&hellip;" aria-label="Search products" />
+  </div>
+  <div class="cosmetics-filter-field">
+    <select id="cosmeticsBrandFilter" aria-label="Filter by brand">
+      <option value="">All Brands</option>
+@foreach (var brand in Microplex.Web.Services.CosmeticCatalog.Brands)
+{
+    <option value="@brand">@brand</option>
+}
+    </select>
+  </div>
+  <div class="cosmetics-filter-field">
+    <select id="cosmeticsCategoryFilter" aria-label="Filter by category">
+      <option value="">All Categories</option>
+@foreach (var category in Microplex.Web.Services.CosmeticCatalog.Categories)
+{
+    <option value="@category">@category</option>
+}
+    </select>
+  </div>
+</div>
+
+<div class="row g-4" id="cosmeticsGrid">
+@foreach (var item in Model)
+{
+    <div class="col-md-6 col-lg-4 cosmetics-grid-item" data-name="@item.Name.ToLowerInvariant()" data-brand="@item.Brand" data-category="@item.Category">
+      <article class="cosmetics-card" style="--accent:@item.AccentColor"
+        data-name="@item.Name" data-brand="@item.Brand" data-category="@item.Category" data-origin="@item.Origin"
+        data-short="@item.ShortDescription" data-full="@item.FullDescription" data-highlights="@string.Join("|", item.Highlights)">
+        <div class="cosmetics-card-visual" aria-hidden="true"><svg viewBox="0 0 64 64" width="34" height="34"><path fill="currentColor" d="M26 4h12a2 2 0 012 2v6h2a4 4 0 014 4v40a4 4 0 01-4 4H24a4 4 0 01-4-4V16a4 4 0 014-4h2V6a2 2 0 012-2zm-2 14a2 2 0 00-2 2v34h20V20a2 2 0 00-2-2H24zm4-10v4h8v-4h-8z"/></svg></div>
+        <span class="cosmetics-card-brand">@item.Brand</span>
+        <h3 class="cosmetics-card-name">@item.Name</h3>
+        <span class="cosmetics-card-category">@item.Category</span>
+        <p class="cosmetics-card-desc">@item.ShortDescription</p>
+        <div class="cosmetics-card-origin"><span aria-hidden="true">&#127757;</span> @item.Origin</div>
+        <div class="cosmetics-card-actions">
+          <button type="button" class="cosmetics-btn-outline" data-action="view-details">View Details</button>
+          <button type="button" class="cosmetics-btn-primary" data-action="request-quote">Request Quote</button>
+        </div>
+      </article>
+    </div>
+}
+</div>
+<div class="cosmetics-empty d-none" id="cosmeticsEmpty"><span>&#128269;</span><h2>No products found</h2><p>Try a different search term, brand, or category.</p></div>
+
+</div></section>
+
+<section class="cosmetics-cta"><div class="container"><div class="row align-items-center gy-3"><div class="col-lg-8"><span class="cosmetics-eyebrow">SHIPPING TO ANY COUNTRY</span><h2>Don&rsquo;t see what you&rsquo;re looking for?</h2></div><div class="col-lg-4 text-lg-end"><a class="cosmetics-btn-light" asp-controller="Home" asp-action="Contact">Ask us directly <span>&rarr;</span></a></div></div></div></section>
+
+</div>
+
+<div class="modal fade" id="cosmeticsDetailModal" tabindex="-1" aria-labelledby="cosmeticsDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content cosmetics-detail-modal">
+      <div class="cosmetics-detail-header">
+        <span id="detailBrand" class="cosmetics-detail-brand"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body cosmetics-detail-body">
+        <h4 id="detailName" class="cosmetics-detail-name"></h4>
+        <div class="cosmetics-detail-tags">
+          <span id="detailCategory" class="cosmetics-tag"></span>
+          <span id="detailOrigin" class="cosmetics-tag cosmetics-tag-origin"></span>
+        </div>
+        <p id="detailFull" class="cosmetics-detail-desc"></p>
+        <ul id="detailHighlights" class="cosmetics-detail-highlights"></ul>
+      </div>
+      <div class="cosmetics-detail-footer">
+        <button type="button" class="cosmetics-btn-primary" id="detailRequestQuoteBtn">Request Quote <span aria-hidden="true">&rarr;</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="cosmeticsQuoteModal" tabindex="-1" aria-labelledby="cosmeticsQuoteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content integration-modal cosmetics-quote-modal">
+      <form asp-controller="Cosmetics" asp-action="SubmitQuoteRequest" method="post">
+        <input type="hidden" name="ItemName" id="quoteItemNameInput" value="" />
+        <input type="hidden" name="ReturnUrl" value="@Context.Request.Path" />
+        <div class="integration-modal-header cosmetics-quote-header">
+          <div class="integration-modal-icon" aria-hidden="true">&#128172;</div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="integration-modal-body">
+          <span class="integration-modal-eyebrow">REQUEST A QUOTATION</span>
+          <h5 class="integration-modal-title" id="cosmeticsQuoteModalLabel">Get your quote on WhatsApp</h5>
+          <p id="quoteModalCopy" class="integration-modal-copy"></p>
+          <label for="quoteNameInput" class="integration-modal-label">Full name</label>
+          <div class="integration-input-group mb-3">
+            <span class="integration-input-icon" aria-hidden="true">&#128100;</span>
+            <input type="text" name="Name" id="quoteNameInput" class="form-control integration-input" placeholder="Your full name" required />
+          </div>
+          <label for="quoteWhatsAppInput" class="integration-modal-label">WhatsApp number</label>
+          <div class="integration-input-group mb-3">
+            <span class="integration-input-icon" aria-hidden="true">&#128172;</span>
+            <input type="tel" name="WhatsAppContact" id="quoteWhatsAppInput" class="form-control integration-input" placeholder="+94 71 111 1344" required />
+          </div>
+          <label for="quoteEmailInput" class="integration-modal-label">Email address <small>(optional)</small></label>
+          <div class="integration-input-group mb-3">
+            <span class="integration-input-icon" aria-hidden="true">&#9993;</span>
+            <input type="email" name="Email" id="quoteEmailInput" class="form-control integration-input" placeholder="you@company.com" />
+          </div>
+          <label for="quoteAddressInput" class="integration-modal-label">Delivery address</label>
+          <div class="integration-input-group mb-3">
+            <span class="integration-input-icon" aria-hidden="true">&#127968;</span>
+            <input type="text" name="Address" id="quoteAddressInput" class="form-control integration-input" placeholder="Street, city, postal code" required />
+          </div>
+          <label for="quoteCountryInput" class="integration-modal-label">Country</label>
+          <div class="integration-input-group">
+            <span class="integration-input-icon" aria-hidden="true">&#127757;</span>
+            <input type="text" name="Country" id="quoteCountryInput" class="form-control integration-input" placeholder="Your country" required />
+          </div>
+        </div>
+        <div class="integration-modal-footer">
+          <button type="button" class="btn integration-btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn cosmetics-btn-send">Send Request <span aria-hidden="true">&rarr;</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        var grid = document.getElementById("cosmeticsGrid");
+        var empty = document.getElementById("cosmeticsEmpty");
+        var searchInput = document.getElementById("cosmeticsSearch");
+        var brandFilter = document.getElementById("cosmeticsBrandFilter");
+        var categoryFilter = document.getElementById("cosmeticsCategoryFilter");
+        var items = Array.prototype.slice.call(grid.querySelectorAll(".cosmetics-grid-item"));
+
+        function applyFilters() {
+            var term = searchInput.value.trim().toLowerCase();
+            var brand = brandFilter.value;
+            var category = categoryFilter.value;
+            var visibleCount = 0;
+
+            items.forEach(function (el) {
+                var matchesTerm = !term || el.getAttribute("data-name").indexOf(term) !== -1 ||
+                    el.getAttribute("data-brand").toLowerCase().indexOf(term) !== -1 ||
+                    el.getAttribute("data-category").toLowerCase().indexOf(term) !== -1;
+                var matchesBrand = !brand || el.getAttribute("data-brand") === brand;
+                var matchesCategory = !category || el.getAttribute("data-category") === category;
+                var visible = matchesTerm && matchesBrand && matchesCategory;
+                el.classList.toggle("d-none", !visible);
+                if (visible) visibleCount++;
+            });
+
+            empty.classList.toggle("d-none", visibleCount !== 0);
+        }
+
+        searchInput.addEventListener("input", applyFilters);
+        brandFilter.addEventListener("change", applyFilters);
+        categoryFilter.addEventListener("change", applyFilters);
+
+        var detailModalEl = document.getElementById("cosmeticsDetailModal");
+        var detailModal = new bootstrap.Modal(detailModalEl);
+        var quoteModalEl = document.getElementById("cosmeticsQuoteModal");
+        var quoteModal = new bootstrap.Modal(quoteModalEl);
+        var currentItemName = "";
+
+        function openDetail(card) {
+            currentItemName = card.getAttribute("data-name");
+            document.getElementById("detailBrand").textContent = card.getAttribute("data-brand");
+            document.getElementById("detailName").textContent = card.getAttribute("data-name");
+            document.getElementById("detailCategory").textContent = card.getAttribute("data-category");
+            document.getElementById("detailOrigin").textContent = card.getAttribute("data-origin");
+            document.getElementById("detailFull").textContent = card.getAttribute("data-full");
+            var list = document.getElementById("detailHighlights");
+            list.innerHTML = "";
+            card.getAttribute("data-highlights").split("|").forEach(function (h) {
+                if (!h) return;
+                var li = document.createElement("li");
+                li.textContent = h;
+                list.appendChild(li);
+            });
+            detailModal.show();
+        }
+
+        function openQuote(itemName) {
+            currentItemName = itemName;
+            document.getElementById("quoteItemNameInput").value = itemName;
+            document.getElementById("quoteModalCopy").textContent = "Enter your details and we'll send your quotation for \"" + itemName + "\" on WhatsApp.";
+            quoteModal.show();
+        }
+
+        grid.addEventListener("click", function (event) {
+            var card = event.target.closest(".cosmetics-card");
+            if (!card) return;
+            var action = event.target.closest("[data-action]");
+            if (action && action.getAttribute("data-action") === "request-quote") {
+                openQuote(card.getAttribute("data-name"));
+            } else {
+                openDetail(card);
+            }
+        });
+
+        document.getElementById("detailRequestQuoteBtn").addEventListener("click", function () {
+            detailModal.hide();
+            detailModalEl.addEventListener("hidden.bs.modal", function handler() {
+                detailModalEl.removeEventListener("hidden.bs.modal", handler);
+                openQuote(currentItemName);
+            });
+        });
+    })();
+</script>
+}
