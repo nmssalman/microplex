@@ -2,6 +2,8 @@
     ViewData["Title"] = "Microplex Academy";
 }
 <section class="page-hero academy-hero"><div class="container"><span class="eyebrow">MICROPLEX ACADEMY</span><h1>Train like the engineers<br />who ship production software.</h1><p>Every program here is industry-level from day one &mdash; real code standards, real architecture, real deployments. This is not a beginner course.</p></div></section>
+@if (TempData["EnrollmentSuccess"] is string enrollmentSuccess) { <div class="container mt-3"><div class="alert alert-success" role="status">@enrollmentSuccess</div></div> }
+@if (TempData["EnrollmentError"] is string enrollmentError) { <div class="container mt-3"><div class="alert alert-danger" role="alert">@enrollmentError</div></div> }
 
 <section class="section-space"><div class="container">
 
@@ -21,7 +23,7 @@
 <li>GitHub &amp; GitHub Actions</li>
 <li>Continuous Deployment</li>
 </ul>
-<a asp-action="Contact" class="academy-btn">Enroll in Web Development</a>
+<button type="button" class="academy-btn" data-bs-toggle="modal" data-bs-target="#enrollModal" data-program="Web Development">Enroll in Web Development</button>
 </article></div>
 
 <div class="col-lg-4"><article class="academy-card">
@@ -37,7 +39,7 @@
 <li>Push Notifications</li>
 <li>Android Services &amp; more</li>
 </ul>
-<a asp-action="Contact" class="academy-btn">Enroll in Android Development</a>
+<button type="button" class="academy-btn" data-bs-toggle="modal" data-bs-target="#enrollModal" data-program="Android Native Development">Enroll in Android Development</button>
 </article></div>
 
 <div class="col-lg-4"><article class="academy-card academy-card-featured">
@@ -50,7 +52,7 @@
 <li>Everything in Android Native Development</li>
 <li>One connected, senior-level curriculum</li>
 </ul>
-<a asp-action="Contact" class="academy-btn academy-btn-light">Enroll in Full Stack</a>
+<button type="button" class="academy-btn academy-btn-light" data-bs-toggle="modal" data-bs-target="#enrollModal" data-program="Full Stack Development">Enroll in Full Stack</button>
 </article></div>
 </div>
 
@@ -67,3 +69,56 @@
 </div></section>
 
 <section class="cta-section"><div class="container"><div class="row align-items-center gy-4"><div class="col-lg-8"><span class="section-kicker">SEATS ARE LIMITED</span><h2>Ready to train at industry level?</h2></div><div class="col-lg-4 text-lg-end"><a class="btn btn-light btn-lg px-4" asp-action="Contact">Talk to Microplex Academy <span>&rarr;</span></a></div></div></div></section>
+
+<div class="modal fade" id="enrollModal" tabindex="-1" aria-labelledby="enrollModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content integration-modal">
+      <form asp-controller="Inquiry" asp-action="SubmitEnrollment" method="post">
+        <input type="hidden" name="Program" id="enrollProgramInput" value="" />
+        <input type="hidden" name="ReturnUrl" value="@Context.Request.Path" />
+        <div class="integration-modal-header">
+          <div class="integration-modal-icon" aria-hidden="true">&#127891;</div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="integration-modal-body">
+          <span class="integration-modal-eyebrow">MICROPLEX ACADEMY</span>
+          <h5 class="integration-modal-title" id="enrollModalLabel">Enroll now</h5>
+          <p id="enrollModalCopy" class="integration-modal-copy"></p>
+          <label for="enrollNameInput" class="integration-modal-label">Full name</label>
+          <div class="integration-input-group mb-3">
+            <span class="integration-input-icon" aria-hidden="true">&#128100;</span>
+            <input type="text" name="Name" id="enrollNameInput" class="form-control integration-input" placeholder="Your full name" required />
+          </div>
+          <label for="enrollEmailInput" class="integration-modal-label">Email address</label>
+          <div class="integration-input-group mb-3">
+            <span class="integration-input-icon" aria-hidden="true">&#9993;</span>
+            <input type="email" name="Email" id="enrollEmailInput" class="form-control integration-input" placeholder="you@company.com" required />
+          </div>
+          <label for="enrollContactInput" class="integration-modal-label">Contact number</label>
+          <div class="integration-input-group">
+            <span class="integration-input-icon" aria-hidden="true">&#128222;</span>
+            <input type="tel" name="ContactNo" id="enrollContactInput" class="form-control integration-input" placeholder="+94 71 111 1344" required />
+          </div>
+        </div>
+        <div class="integration-modal-footer">
+          <button type="button" class="btn integration-btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn integration-btn-send">Send <span aria-hidden="true">&rarr;</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@section Scripts {
+<script>
+    (function () {
+        var modalEl = document.getElementById("enrollModal");
+        if (!modalEl) return;
+        modalEl.addEventListener("show.bs.modal", function (event) {
+            var trigger = event.relatedTarget;
+            var program = trigger ? trigger.getAttribute("data-program") : "";
+            document.getElementById("enrollProgramInput").value = program || "";
+            document.getElementById("enrollModalCopy").textContent = "Enter your details and our team will reach out about the " + program + " program.";
+        });
+    })();
+</script>
+}
