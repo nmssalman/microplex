@@ -8,62 +8,84 @@ namespace Microplex.Web.Controllers;
 
 [ApiController]
 [Route("api/email")]
-public sealed class EmailApiController(ApplicationDbContext db, EmailSender emailSender) : ControllerBase
+public sealed class EmailApiController(ApplicationDbContext db, EmailSender emailSender, ApiStatusTracker statusTracker) : ControllerBase
 {
+    private const string ApiName = "Email Gateway";
+
     [HttpGet("balance")]
     public async Task<IActionResult> GetBalance()
     {
-        var client = await AuthenticateAsync();
-        if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API key." });
+        try
+        {
+            var client = await AuthenticateAsync();
+            if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API key." });
 
-        return Ok(new { success = true, companyName = client.CompanyName, balance = client.EmailCredits });
+            await statusTracker.RecordSuccessAsync(ApiName, "Balance");
+            return Ok(new { success = true, companyName = client.CompanyName, balance = client.EmailCredits });
+        }
+        catch (Exception ex)
+        {
+            await statusTracker.RecordFailureAsync(ApiName, "Balance", ex.Message);
+            return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+        }
     }
 
     [HttpPost("send")]
     public async Task<IActionResult> Send([FromBody] SendEmailRequest request)
     {
-        var client = await AuthenticateAsync(request.ApiToken);
-        if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API token." });
-
-        if (string.IsNullOrWhiteSpace(request.Recipient))
-            return BadRequest(new { success = false, message = "recipient is required." });
-        if (string.IsNullOrWhiteSpace(request.Subject))
-            return BadRequest(new { success = false, message = "subject is required." });
-        if (string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest(new { success = false, message = "message is required." });
-
-        if (client.EmailCredits <= 0)
+        try
         {
-            await LogAttemptAsync(client, request, success: false, failureReason: "Insufficient Email balance.", gatewayResponse: null);
-            return BadRequest(new { success = false, message = "Insufficient Email balance.", balance = client.EmailCredits });
-        }
+            var client = await AuthenticateAsync(request.ApiToken);
+            if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API token." });
 
-        var senderName = string.IsNullOrWhiteSpace(request.SenderName) ? client.CompanyName : request.SenderName;
-        var gatewayResult = await emailSender.SendAsync(request.Recipient, request.RecipientName, request.Subject, request.Message, senderName);
-        if (!gatewayResult.Success)
-        {
-            await LogAttemptAsync(client, request, success: false, failureReason: $"Gateway rejected the request (HTTP {gatewayResult.StatusCode}).", gatewayResponse: gatewayResult.ResponseBody);
-            return StatusCode(502, new
+            if (string.IsNullOrWhiteSpace(request.Recipient))
+                return BadRequest(new { success = false, message = "recipient is required." });
+            if (string.IsNullOrWhiteSpace(request.Subject))
+                return BadRequest(new { success = false, message = "subject is required." });
+            if (string.IsNullOrWhiteSpace(request.Message))
+                return BadRequest(new { success = false, message = "message is required." });
+
+            if (client.EmailCredits <= 0)
             {
-                success = false,
-                message = "The email gateway rejected the request.",
-                gatewayStatusCode = gatewayResult.StatusCode,
+                await LogAttemptAsync(client, request, success: false, failureReason: "Insufficient Email balance.", gatewayResponse: null);
+                return BadRequest(new { success = false, message = "Insufficient Email balance.", balance = client.EmailCredits });
+            }
+
+            var senderName = string.IsNullOrWhiteSpace(request.SenderName) ? client.CompanyName : request.SenderName;
+            var gatewayResult = await emailSender.SendAsync(request.Recipient, request.RecipientName, request.Subject, request.Message, senderName);
+            if (!gatewayResult.Success)
+            {
+                var failureReason = $"Gateway rejected the request (HTTP {gatewayResult.StatusCode}).";
+                await LogAttemptAsync(client, request, success: false, failureReason: failureReason, gatewayResponse: gatewayResult.ResponseBody);
+                await statusTracker.RecordFailureAsync(ApiName, "Send", $"{failureReason} {gatewayResult.ResponseBody}");
+                return StatusCode(502, new
+                {
+                    success = false,
+                    message = "The email gateway rejected the request.",
+                    gatewayStatusCode = gatewayResult.StatusCode,
+                    gatewayResponse = gatewayResult.ResponseBody
+                });
+            }
+
+            await DeductOneCreditAsync(client);
+            await LogAttemptAsync(client, request, success: true, failureReason: null, gatewayResponse: gatewayResult.ResponseBody);
+            await statusTracker.RecordSuccessAsync(ApiName, "Send");
+
+            return Ok(new
+            {
+                success = true,
+                message_id = Guid.NewGuid().ToString("N"),
+                recipient = request.Recipient,
+                status = "sent",
+                balance = client.EmailCredits,
                 gatewayResponse = gatewayResult.ResponseBody
             });
         }
-
-        await DeductOneCreditAsync(client);
-        await LogAttemptAsync(client, request, success: true, failureReason: null, gatewayResponse: gatewayResult.ResponseBody);
-
-        return Ok(new
+        catch (Exception ex)
         {
-            success = true,
-            message_id = Guid.NewGuid().ToString("N"),
-            recipient = request.Recipient,
-            status = "sent",
-            balance = client.EmailCredits,
-            gatewayResponse = gatewayResult.ResponseBody
-        });
+            await statusTracker.RecordFailureAsync(ApiName, "Send", ex.Message);
+            return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+        }
     }
 
     private async Task DeductOneCreditAsync(Client client)

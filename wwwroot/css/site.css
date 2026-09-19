@@ -69,3 +69,21 @@ html{font-size:16px;scroll-behavior:smooth}body{margin:0;color:var(--text);font-
 @media (max-width:767.98px){.jp-blob{display:none}.jp-marquee-track{animation-duration:14s}}
 .legal-content{max-width:800px}.legal-updated{color:var(--muted);font-size:.85rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;margin-bottom:2rem}.legal-content h2{font-size:1.3rem;font-weight:800;color:var(--text);margin:2.2rem 0 .8rem}.legal-content h2:first-of-type{margin-top:0}.legal-content h3{font-size:1rem;font-weight:700;color:var(--text);margin:1.4rem 0 .5rem}.legal-content p,.legal-content li{color:var(--muted);font-size:.96rem;line-height:1.75}.legal-content ul{padding-left:1.3rem;margin-bottom:1rem}.legal-content li{margin-bottom:.4rem}.legal-content a{color:var(--primary);font-weight:600}
 .footer-link{color:#8798b3;text-decoration:none;font-weight:600}.footer-link:hover{color:#fff}
+.status-banner{display:flex;align-items:center;gap:.7rem;padding:1.1rem 1.4rem;border-radius:12px;font-weight:800;font-size:1.05rem;margin-bottom:2rem}
+.status-banner-dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+.status-banner-operational{background:#e8f7ee;color:#0f7a3d}.status-banner-operational .status-banner-dot{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2)}
+.status-banner-warning{background:#fff7e6;color:#92600a}.status-banner-warning .status-banner-dot{background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.2)}
+.status-banner-stopped{background:#fdecec;color:#a3132b}.status-banner-stopped .status-banner-dot{background:#dc2626;box-shadow:0 0 0 4px rgba(220,38,38,.2)}
+.status-group{margin-bottom:2rem}
+.status-group h2{font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:.8rem}
+.status-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;padding:1rem 1.2rem;border:1px solid #e6ecf5;border-radius:10px;margin-bottom:.6rem;background:#fff}
+.status-row-main{display:flex;align-items:center;gap:.8rem}
+.status-method{font-weight:700;color:var(--text);font-size:.92rem}
+.status-endpoint{font-size:.8rem;color:var(--muted);background:#f5f8fc;padding:.2rem .5rem;border-radius:6px}
+.status-row-meta{display:flex;align-items:center;gap:1rem}
+.status-last-checked{font-size:.78rem;color:var(--muted)}
+.status-badge{display:inline-block;padding:.3rem .7rem;border-radius:999px;font-size:.72rem;font-weight:800;letter-spacing:.03em}
+.status-badge-operational{background:#e8f7ee;color:#0f7a3d}
+.status-badge-warning{background:#fff7e6;color:#92600a}
+.status-badge-stopped{background:#fdecec;color:#a3132b}
+.status-footnote{font-size:.82rem;color:var(--muted);margin-top:1.5rem}

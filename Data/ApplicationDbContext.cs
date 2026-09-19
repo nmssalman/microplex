@@ -9,6 +9,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<SmsMessageLog> SmsMessageLogs => Set<SmsMessageLog>();
     public DbSet<EmailMessageLog> EmailMessageLogs => Set<EmailMessageLog>();
+    public DbSet<ApiStatusRecord> ApiStatuses => Set<ApiStatusRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -43,6 +44,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany()
                 .HasForeignKey(x => x.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<ApiStatusRecord>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.ApiName, x.MethodName }).IsUnique();
         });
     }
 }

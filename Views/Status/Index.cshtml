@@ -1,0 +1,65 @@
+@model Microplex.Web.Models.StatusPageViewModel
+@{
+    ViewData["Title"] = "System Status";
+    var overallLabel = Model.OverallStatus switch
+    {
+        Microplex.Web.Data.ApiHealthStatus.Stopped => "Major Outage",
+        Microplex.Web.Data.ApiHealthStatus.Warning => "Degraded Performance",
+        _ => "All Systems Operational"
+    };
+    var overallClass = Model.OverallStatus switch
+    {
+        Microplex.Web.Data.ApiHealthStatus.Stopped => "status-banner-stopped",
+        Microplex.Web.Data.ApiHealthStatus.Warning => "status-banner-warning",
+        _ => "status-banner-operational"
+    };
+}
+<section class="page-hero status-hero"><div class="container"><span class="eyebrow">SYSTEM STATUS</span><h1>Microplex API status.</h1><p>Live health of the SMS and Email Gateway APIs, updated automatically as requests come in.</p></div></section>
+
+<section class="section-space"><div class="container">
+
+<div class="status-banner @overallClass"><span class="status-banner-dot"></span>@overallLabel</div>
+
+<div class="status-table">
+@foreach (var group in Model.Items.GroupBy(x => x.ApiName))
+{
+    <div class="status-group">
+        <h2>@group.Key</h2>
+        @foreach (var item in group)
+        {
+            var (badgeClass, badgeLabel) = item.Status switch
+            {
+                Microplex.Web.Data.ApiHealthStatus.Stopped => ("status-badge-stopped", "Stopped"),
+                Microplex.Web.Data.ApiHealthStatus.Warning => ("status-badge-warning", "Warning"),
+                _ => ("status-badge-operational", "Operational")
+            };
+            <div class="status-row">
+                <div class="status-row-main">
+                    <span class="status-method">@item.MethodName</span>
+                    <code class="status-endpoint">@item.Endpoint</code>
+                </div>
+                <div class="status-row-meta">
+                    @if (item.LastCheckedAtUtc.HasValue)
+                    {
+                        <span class="status-last-checked">Last checked @Microplex.Web.Utilities.SriLankaTime.FromUtc(item.LastCheckedAtUtc.Value).ToString("dd MMM, HH:mm") (SLT)</span>
+                    }
+                    else
+                    {
+                        <span class="status-last-checked">Awaiting first request</span>
+                    }
+                    <span class="status-badge @badgeClass">@badgeLabel</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+</div>
+
+<p class="status-footnote">An endpoint is marked <strong>Warning</strong> after 1&ndash;3 consecutive failed requests, and <strong>Stopped</strong> after more than 3 consecutive failures &mdash; at which point our team is alerted automatically. This page refreshes every 30 seconds.</p>
+
+</div></section>
+@section Scripts {
+<script>
+    setTimeout(function () { window.location.reload(); }, 30000);
+</script>
+}

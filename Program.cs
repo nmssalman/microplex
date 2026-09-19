@@ -24,6 +24,7 @@ public class Program
         builder.Services.AddHttpClient<SmsGatewayClient>();
         builder.Services.AddHttpClient<EmailSender>();
         builder.Services.AddHttpClient<InternalEmailApiClient>();
+        builder.Services.AddScoped<ApiStatusTracker>();
         builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;

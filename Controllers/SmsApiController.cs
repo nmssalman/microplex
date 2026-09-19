@@ -8,65 +8,86 @@ namespace Microplex.Web.Controllers;
 
 [ApiController]
 [Route("api/sms")]
-public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient smsGateway) : ControllerBase
+public sealed class SmsApiController(ApplicationDbContext db, SmsGatewayClient smsGateway, ApiStatusTracker statusTracker) : ControllerBase
 {
+    private const string ApiName = "SMS Gateway";
     private static readonly string[] AllowedMessageTypes = ["plain", "unicode"];
 
     [HttpGet("balance")]
     public async Task<IActionResult> GetBalance()
     {
-        var client = await AuthenticateAsync();
-        if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API key." });
+        try
+        {
+            var client = await AuthenticateAsync();
+            if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API key." });
 
-        return Ok(new { success = true, companyName = client.CompanyName, balance = client.SmsCredits });
+            await statusTracker.RecordSuccessAsync(ApiName, "Balance");
+            return Ok(new { success = true, companyName = client.CompanyName, balance = client.SmsCredits });
+        }
+        catch (Exception ex)
+        {
+            await statusTracker.RecordFailureAsync(ApiName, "Balance", ex.Message);
+            return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+        }
     }
 
     [HttpPost("send")]
     public async Task<IActionResult> Send([FromBody] SendSmsRequest request)
     {
-        var client = await AuthenticateAsync(request.ApiToken);
-        if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API token." });
-
-        if (string.IsNullOrWhiteSpace(request.Recipient))
-            return BadRequest(new { success = false, message = "recipient is required." });
-        if (string.IsNullOrWhiteSpace(request.SenderId))
-            return BadRequest(new { success = false, message = "sender_id is required." });
-        if (string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest(new { success = false, message = "message is required." });
-        if (string.IsNullOrWhiteSpace(request.Type) || !AllowedMessageTypes.Contains(request.Type, StringComparer.OrdinalIgnoreCase))
-            return BadRequest(new { success = false, message = "type must be 'plain' or 'unicode'." });
-
-        if (client.SmsCredits <= 0)
+        try
         {
-            await LogAttemptAsync(client, request, success: false, failureReason: "Insufficient SMS balance.", gatewayResponse: null);
-            return BadRequest(new { success = false, message = "Insufficient SMS balance.", balance = client.SmsCredits });
-        }
+            var client = await AuthenticateAsync(request.ApiToken);
+            if (client is null) return Unauthorized(new { success = false, message = "Invalid or missing API token." });
 
-        var gatewayResult = await smsGateway.SendAsync(request.Recipient, request.SenderId, request.Type, request.Message);
-        if (!gatewayResult.Success)
-        {
-            await LogAttemptAsync(client, request, success: false, failureReason: $"Gateway rejected the request (HTTP {gatewayResult.StatusCode}).", gatewayResponse: gatewayResult.ResponseBody);
-            return StatusCode(502, new
+            if (string.IsNullOrWhiteSpace(request.Recipient))
+                return BadRequest(new { success = false, message = "recipient is required." });
+            if (string.IsNullOrWhiteSpace(request.SenderId))
+                return BadRequest(new { success = false, message = "sender_id is required." });
+            if (string.IsNullOrWhiteSpace(request.Message))
+                return BadRequest(new { success = false, message = "message is required." });
+            if (string.IsNullOrWhiteSpace(request.Type) || !AllowedMessageTypes.Contains(request.Type, StringComparer.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "type must be 'plain' or 'unicode'." });
+
+            if (client.SmsCredits <= 0)
             {
-                success = false,
-                message = "The SMS gateway rejected the request.",
-                gatewayStatusCode = gatewayResult.StatusCode,
+                await LogAttemptAsync(client, request, success: false, failureReason: "Insufficient SMS balance.", gatewayResponse: null);
+                return BadRequest(new { success = false, message = "Insufficient SMS balance.", balance = client.SmsCredits });
+            }
+
+            var gatewayResult = await smsGateway.SendAsync(request.Recipient, request.SenderId, request.Type, request.Message);
+            if (!gatewayResult.Success)
+            {
+                var failureReason = $"Gateway rejected the request (HTTP {gatewayResult.StatusCode}).";
+                await LogAttemptAsync(client, request, success: false, failureReason: failureReason, gatewayResponse: gatewayResult.ResponseBody);
+                await statusTracker.RecordFailureAsync(ApiName, "Send", $"{failureReason} {gatewayResult.ResponseBody}");
+                return StatusCode(502, new
+                {
+                    success = false,
+                    message = "The SMS gateway rejected the request.",
+                    gatewayStatusCode = gatewayResult.StatusCode,
+                    gatewayResponse = gatewayResult.ResponseBody
+                });
+            }
+
+            await DeductOneCreditAsync(client);
+            await LogAttemptAsync(client, request, success: true, failureReason: null, gatewayResponse: gatewayResult.ResponseBody);
+            await statusTracker.RecordSuccessAsync(ApiName, "Send");
+
+            return Ok(new
+            {
+                success = true,
+                message_id = Guid.NewGuid().ToString("N"),
+                recipient = request.Recipient,
+                status = "sent",
+                balance = client.SmsCredits,
                 gatewayResponse = gatewayResult.ResponseBody
             });
         }
-
-        await DeductOneCreditAsync(client);
-        await LogAttemptAsync(client, request, success: true, failureReason: null, gatewayResponse: gatewayResult.ResponseBody);
-
-        return Ok(new
+        catch (Exception ex)
         {
-            success = true,
-            message_id = Guid.NewGuid().ToString("N"),
-            recipient = request.Recipient,
-            status = "sent",
-            balance = client.SmsCredits,
-            gatewayResponse = gatewayResult.ResponseBody
-        });
+            await statusTracker.RecordFailureAsync(ApiName, "Send", ex.Message);
+            return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+        }
     }
 
     private async Task DeductOneCreditAsync(Client client)
