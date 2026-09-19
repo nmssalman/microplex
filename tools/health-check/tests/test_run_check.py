@@ -647,6 +647,58 @@ def test_render_html_escapes_html_in_result_fields():
     assert "Cat & Co" not in output
 
 
+def test_render_html_includes_style_block_with_animation():
+    from datetime import datetime as dt
+
+    results = [rc.Result("Public Site", "GET /", rc.PASS, "ok", 10)]
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert "<style>" in output
+    assert "@keyframes" in output
+
+
+def test_render_html_includes_gradient_header_with_brand_colors():
+    from datetime import datetime as dt
+
+    results = [rc.Result("Public Site", "GET /", rc.PASS, "ok", 10)]
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert "linear-gradient" in output
+    assert "#2563eb" in output
+    assert "#7c3aed" in output
+
+
+def test_render_html_includes_stat_cards_with_counts():
+    from datetime import datetime as dt
+
+    results = [
+        rc.Result("c", "a", rc.PASS, "", 1),
+        rc.Result("c", "b", rc.PASS, "", 1),
+        rc.Result("c", "c", rc.WARNING, "", 1),
+        rc.Result("c", "d", rc.FAIL, "", 1),
+    ]
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert "Passed" in output
+    assert "Warnings" in output
+    assert "Failed" in output
+    assert ">2<" in output
+    assert ">1<" in output
+
+
+def test_render_html_uses_category_icon_for_known_category_and_default_for_unknown():
+    from datetime import datetime as dt
+
+    results = [
+        rc.Result("Public Site", "a", rc.PASS, "", 1),
+        rc.Result("Totally Unknown Category", "b", rc.PASS, "", 1),
+    ]
+    output = rc.render_html(results, dt(2026, 9, 19, 4, 5), "")
+
+    assert rc.CATEGORY_ICONS["Public Site"] in output
+    assert rc.DEFAULT_CATEGORY_ICON in output
+
+
 @patch("run_check.requests.post")
 def test_send_report_success(mock_post):
     mock_post.return_value = MagicMock(status_code=201)
@@ -710,7 +762,9 @@ def test_main_dry_run_writes_report(tmp_path, monkeypatch):
 
     assert exit_code == 0
     assert output_path.exists()
-    assert "Microplex Daily Health Check" in output_path.read_text()
+    report_text = output_path.read_text()
+    assert "MICROPLEX" in report_text
+    assert "Daily Health Check" in report_text
 
 
 def test_main_returns_nonzero_when_send_fails(monkeypatch):
