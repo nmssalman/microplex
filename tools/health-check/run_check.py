@@ -26,6 +26,18 @@ FAIL = "FAIL"
 
 STATUS_RANK = {PASS: 0, WARNING: 1, FAIL: 2}
 STATUS_COLOR = {PASS: "#16a34a", WARNING: "#d97706", FAIL: "#dc2626"}
+STATUS_ICON = {PASS: "✓", WARNING: "⚠", FAIL: "✕"}
+
+CATEGORY_ICONS = {
+    "Public Site": "\U0001f310",
+    "Solution Integration Email": "✉️",
+    "SMS Send API": "\U0001f4e4",
+    "SMS Balance API": "\U0001f4f6",
+    "Email Send API": "\U0001f4e7",
+    "Email Balance API": "\U0001f4b3",
+    "Other Features": "\U0001f6e1️",
+}
+DEFAULT_CATEGORY_ICON = "\U0001f527"
 
 
 @dataclass
@@ -344,21 +356,29 @@ def build_subject(overall_status: str, results: list[Result]) -> str:
     return f"\U0001f534 Microplex Health Check — {failures} Failed"
 
 
+_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+
+
 def _render_row(r: Result) -> str:
+    icon = STATUS_ICON.get(r.status, "•")
     return (
-        '<tr style="border-bottom:1px solid #e5e7eb;">'
-        f'<td style="padding:8px 4px;font:14px system-ui;color:#111827;">{html_module.escape(r.name)}</td>'
-        '<td style="padding:8px 4px;white-space:nowrap;">'
-        f'<span style="padding:3px 10px;border-radius:999px;color:#fff;font:600 12px system-ui;'
-        f'background:{STATUS_COLOR[r.status]};">{r.status}</span></td>'
-        f'<td style="padding:8px 4px;font:13px system-ui;color:#6b7280;">'
-        f'{html_module.escape(r.detail)} ({r.duration_ms}ms)</td>'
-        '</tr>'
+        "<tr>"
+        f'<td style="padding:10px 2px 2px;font:600 13px {_FONT};color:#1f2937;">{html_module.escape(r.name)}</td>'
+        '<td style="padding:10px 2px 2px;text-align:right;white-space:nowrap;">'
+        f'<span style="display:inline-block;padding:4px 12px;border-radius:999px;color:#fff;'
+        f'font:700 11px {_FONT};letter-spacing:.02em;background:{STATUS_COLOR[r.status]};'
+        f'box-shadow:0 1px 2px rgba(0,0,0,.12);">{icon} {r.status}</span></td>'
+        "</tr>"
+        "<tr>"
+        f'<td colspan="2" style="padding:0 2px 12px;border-bottom:1px solid #f1f3f7;'
+        f'font:12px {_FONT};color:#8a93a6;">{html_module.escape(r.detail)} &middot; {r.duration_ms}ms</td>'
+        "</tr>"
     )
 
 
 def render_html(results: list[Result], generated_at: datetime, run_url: str) -> str:
     overall = compute_overall_status(results)
+    overall_icon = STATUS_ICON.get(overall, "•")
     passed = sum(1 for r in results if r.status == PASS)
     warnings = sum(1 for r in results if r.status == WARNING)
     failures = sum(1 for r in results if r.status == FAIL)
@@ -369,38 +389,87 @@ def render_html(results: list[Result], generated_at: datetime, run_url: str) -> 
             seen_categories.append(r.category)
 
     sections = []
-    for category in seen_categories:
+    for index, category in enumerate(seen_categories):
         rows = "".join(_render_row(r) for r in results if r.category == category)
+        icon = CATEGORY_ICONS.get(category, DEFAULT_CATEGORY_ICON)
+        delay = min(index, 6) * 0.06
         sections.append(
-            f'<h2 style="font:600 16px system-ui;margin:24px 0 8px;color:#111827;">'
-            f'{html_module.escape(category)}</h2>'
+            f'<div class="mpx-animate" style="opacity:1;animation-delay:{delay:.2f}s;'
+            "background:#ffffff;border-radius:14px;padding:18px 20px 6px;margin-top:14px;"
+            'box-shadow:0 1px 3px rgba(15,23,42,.08);border:1px solid #eef1f6;">'
+            f'<p style="margin:0 0 8px;font:700 14px {_FONT};color:#111827;">'
+            f'<span style="margin-right:8px;">{icon}</span>{html_module.escape(category)}</p>'
             f'<table style="width:100%;border-collapse:collapse;">{rows}</table>'
+            "</div>"
         )
 
     run_link = ""
     if run_url:
         run_link = (
-            f'<p style="font:12px system-ui;color:#6b7280;margin-top:24px;">'
-            f'<a href="{html_module.escape(run_url)}" style="color:#6b7280;">View this run</a></p>'
+            '<p style="margin:20px 0 0;">'
+            f'<a href="{html_module.escape(run_url)}" '
+            'style="display:inline-block;padding:8px 18px;border-radius:999px;'
+            f'background:#eef2ff;color:#4338ca;font:700 12px {_FONT};text-decoration:none;">'
+            "View this run &rarr;</a></p>"
         )
 
     return f"""<!DOCTYPE html>
-<html><body style="margin:0;padding:24px;background:#f3f4f6;font-family:system-ui,-apple-system,sans-serif;">
-<div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:8px;padding:24px;">
-  <h1 style="font-size:20px;margin:0 0 8px;color:#111827;">Microplex Daily Health Check</h1>
-  <p style="font:14px system-ui;color:#6b7280;margin:0 0 16px;">
-    {generated_at.strftime('%Y-%m-%d %H:%M')} (Asia/Colombo)
-  </p>
-  <div style="display:inline-block;padding:6px 14px;border-radius:999px;color:#fff;font:600 13px system-ui;background:{STATUS_COLOR[overall]};">
-    {overall}
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @keyframes mpxFadeUp {{
+    0% {{ opacity: 0; transform: translateY(10px); }}
+    100% {{ opacity: 1; transform: translateY(0); }}
+  }}
+  @keyframes mpxPulse {{
+    0%, 100% {{ box-shadow: 0 0 0 0 rgba(255,255,255,.35); }}
+    50% {{ box-shadow: 0 0 0 8px rgba(255,255,255,0); }}
+  }}
+  .mpx-animate {{ animation: mpxFadeUp .6s cubic-bezier(.16,1,.3,1) both; }}
+  .mpx-pulse {{ animation: mpxPulse 2.2s ease-in-out infinite; }}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#eef2f9;font-family:{_FONT};">
+<div style="max-width:640px;margin:0 auto;padding:24px 16px 40px;">
+
+  <div class="mpx-animate" style="opacity:1;background:linear-gradient(135deg,#2563eb 0%,#7c3aed 100%);border-radius:18px;padding:28px 24px;box-shadow:0 12px 28px rgba(76,29,199,.28);">
+    <p style="margin:0 0 6px;font:700 11px {_FONT};letter-spacing:.14em;color:rgba(255,255,255,.75);text-transform:uppercase;">MICROPLEX</p>
+    <h1 style="margin:0 0 10px;font-size:22px;line-height:1.3;color:#ffffff;font-family:{_FONT};">Daily Health Check</h1>
+    <p style="margin:0 0 18px;font:13px {_FONT};color:rgba(255,255,255,.85);">
+      {generated_at.strftime('%Y-%m-%d %H:%M')} (Asia/Colombo)
+    </p>
+    <div class="mpx-pulse" style="opacity:1;display:inline-block;padding:9px 18px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#ffffff;font:700 13px {_FONT};">
+      {overall_icon} {overall}
+    </div>
   </div>
-  <p style="font:14px system-ui;color:#374151;margin-top:12px;">
-    {passed} passed &middot; {warnings} warning(s) &middot; {failures} failed
-  </p>
+
+  <table style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:16px 0 0;table-layout:fixed;">
+    <tr>
+      <td class="mpx-animate" style="opacity:1;background:#ecfdf5;border-radius:12px;padding:14px 6px;text-align:center;">
+        <div style="font:800 24px {_FONT};color:#16a34a;">{passed}</div>
+        <div style="font:700 10px {_FONT};color:#15803d;letter-spacing:.06em;text-transform:uppercase;">Passed</div>
+      </td>
+      <td class="mpx-animate" style="opacity:1;background:#fffbeb;border-radius:12px;padding:14px 6px;text-align:center;">
+        <div style="font:800 24px {_FONT};color:#d97706;">{warnings}</div>
+        <div style="font:700 10px {_FONT};color:#b45309;letter-spacing:.06em;text-transform:uppercase;">Warnings</div>
+      </td>
+      <td class="mpx-animate" style="opacity:1;background:#fef2f2;border-radius:12px;padding:14px 6px;text-align:center;">
+        <div style="font:800 24px {_FONT};color:#dc2626;">{failures}</div>
+        <div style="font:700 10px {_FONT};color:#b91c1c;letter-spacing:.06em;text-transform:uppercase;">Failed</div>
+      </td>
+    </tr>
+  </table>
+
   {''.join(sections)}
-  {run_link}
+
+  <div style="text-align:center;">
+    {run_link}
+    <p style="margin:18px 0 0;font:11px {_FONT};color:#9ca3af;">Automated by GitHub Actions &middot; Microplex Corporation</p>
+  </div>
 </div>
-</body></html>"""
+</body>
+</html>"""
 
 
 def send_report(config: Config, html_body: str, subject: str) -> tuple[bool, str]:
