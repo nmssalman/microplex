@@ -3,6 +3,7 @@ namespace Microplex.Web.Models;
 public sealed class CosmeticItem
 {
     public int Id { get; set; }
+    public string Code => $"MPX-COS-{Id:D4}";
     public string Name { get; set; } = string.Empty;
     public string Brand { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;

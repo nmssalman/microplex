@@ -2,6 +2,19 @@
 @{
     ViewData["Title"] = "Cosmetics";
 }
+@functions {
+    private string ProductArt(string category)
+    {
+        return category switch
+        {
+            "Moisturizer" => "<svg viewBox='0 0 100 100' width='72' height='72' aria-hidden='true'><rect x='20' y='38' width='60' height='50' rx='14' fill='currentColor'/><rect x='16' y='20' width='68' height='22' rx='10' fill='currentColor' opacity='.7'/></svg>",
+            "Cleanser" or "Face Wash" => "<svg viewBox='0 0 100 100' width='72' height='72' aria-hidden='true'><rect x='32' y='40' width='36' height='48' rx='8' fill='currentColor'/><rect x='40' y='22' width='20' height='18' fill='currentColor'/><rect x='36' y='8' width='28' height='14' rx='5' fill='currentColor' opacity='.7'/><rect x='62' y='10' width='16' height='7' rx='2' fill='currentColor' opacity='.7'/></svg>",
+            _ => "<svg viewBox='0 0 100 100' width='72' height='72' aria-hidden='true'><rect x='36' y='42' width='28' height='46' rx='7' fill='currentColor'/><rect x='42' y='26' width='16' height='16' fill='currentColor'/><rect x='38' y='10' width='24' height='16' rx='5' fill='currentColor' opacity='.7'/><circle cx='50' cy='26' r='2.5' fill='#fff'/></svg>"
+        };
+    }
+
+    private const string JapanFlagSvg = "<svg viewBox='0 0 30 20' width='24' height='16' aria-hidden='true' style='border-radius:2px;vertical-align:middle;flex-shrink:0'><rect x='1' y='1' width='28' height='18' rx='1' fill='#fff' stroke='#b9b0aa' stroke-width='2'/><circle cx='15' cy='10' r='6' fill='#bc002d'/></svg>";
+}
 <div class="cosmetics-page">
 <section class="cosmetics-hero"><div class="container"><span class="cosmetics-eyebrow">PREMIUM JAPANESE COSMETICS</span><h1>Authentic Japanese skincare,<br />delivered worldwide.</h1><p>We source premium quality cosmetics widely available in Japan and bring them to you &mdash; request a quotation and we&rsquo;ll reply on WhatsApp with pricing and shipping to your country.</p></div></section>
 
@@ -40,14 +53,15 @@
 {
     <div class="col-md-6 col-lg-4 cosmetics-grid-item" data-name="@item.Name.ToLowerInvariant()" data-brand="@item.Brand" data-category="@item.Category">
       <article class="cosmetics-card" style="--accent:@item.AccentColor"
-        data-name="@item.Name" data-brand="@item.Brand" data-category="@item.Category" data-origin="@item.Origin"
+        data-code="@item.Code" data-name="@item.Name" data-brand="@item.Brand" data-category="@item.Category" data-origin="@item.Origin"
         data-short="@item.ShortDescription" data-full="@item.FullDescription" data-highlights="@string.Join("|", item.Highlights)">
-        <div class="cosmetics-card-visual" aria-hidden="true"><svg viewBox="0 0 64 64" width="34" height="34"><path fill="currentColor" d="M26 4h12a2 2 0 012 2v6h2a4 4 0 014 4v40a4 4 0 01-4 4H24a4 4 0 01-4-4V16a4 4 0 014-4h2V6a2 2 0 012-2zm-2 14a2 2 0 00-2 2v34h20V20a2 2 0 00-2-2H24zm4-10v4h8v-4h-8z"/></svg></div>
+        <div class="cosmetics-card-image">@Html.Raw(ProductArt(item.Category))</div>
+        <span class="cosmetics-card-code">@item.Code</span>
         <span class="cosmetics-card-brand">@item.Brand</span>
         <h3 class="cosmetics-card-name">@item.Name</h3>
         <span class="cosmetics-card-category">@item.Category</span>
         <p class="cosmetics-card-desc">@item.ShortDescription</p>
-        <div class="cosmetics-card-origin"><span aria-hidden="true">&#127757;</span> @item.Origin</div>
+        <div class="cosmetics-card-origin">@Html.Raw(JapanFlagSvg) @item.Origin</div>
         <div class="cosmetics-card-actions">
           <button type="button" class="cosmetics-btn-outline" data-action="view-details">View Details</button>
           <button type="button" class="cosmetics-btn-primary" data-action="request-quote">Request Quote</button>
@@ -62,16 +76,15 @@
 
 <section class="cosmetics-cta"><div class="container"><div class="row align-items-center gy-3"><div class="col-lg-8"><span class="cosmetics-eyebrow">SHIPPING TO ANY COUNTRY</span><h2>Don&rsquo;t see what you&rsquo;re looking for?</h2></div><div class="col-lg-4 text-lg-end"><a class="cosmetics-btn-light" asp-controller="Home" asp-action="Contact">Ask us directly <span>&rarr;</span></a></div></div></div></section>
 
-</div>
-
 <div class="modal fade" id="cosmeticsDetailModal" tabindex="-1" aria-labelledby="cosmeticsDetailModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content cosmetics-detail-modal">
       <div class="cosmetics-detail-header">
-        <span id="detailBrand" class="cosmetics-detail-brand"></span>
+        <div><span id="detailBrand" class="cosmetics-detail-brand"></span> <span id="detailCode" class="cosmetics-detail-code"></span></div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body cosmetics-detail-body">
+        <div id="detailImage" class="cosmetics-detail-image"></div>
         <h4 id="detailName" class="cosmetics-detail-name"></h4>
         <div class="cosmetics-detail-tags">
           <span id="detailCategory" class="cosmetics-tag"></span>
@@ -136,6 +149,8 @@
   </div>
 </div>
 
+</div>
+
 @section Scripts {
 <script>
     (function () {
@@ -179,10 +194,13 @@
         function openDetail(card) {
             currentItemName = card.getAttribute("data-name");
             document.getElementById("detailBrand").textContent = card.getAttribute("data-brand");
+            document.getElementById("detailCode").textContent = card.getAttribute("data-code");
             document.getElementById("detailName").textContent = card.getAttribute("data-name");
             document.getElementById("detailCategory").textContent = card.getAttribute("data-category");
-            document.getElementById("detailOrigin").textContent = card.getAttribute("data-origin");
+            document.getElementById("detailOrigin").innerHTML = card.querySelector(".cosmetics-card-origin").innerHTML;
             document.getElementById("detailFull").textContent = card.getAttribute("data-full");
+            document.getElementById("detailImage").innerHTML = card.querySelector(".cosmetics-card-image").innerHTML;
+            document.getElementById("detailImage").style.color = card.style.getPropertyValue("--accent");
             var list = document.getElementById("detailHighlights");
             list.innerHTML = "";
             card.getAttribute("data-highlights").split("|").forEach(function (h) {

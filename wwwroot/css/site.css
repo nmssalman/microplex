@@ -129,14 +129,15 @@ html{font-size:16px;scroll-behavior:smooth}body{margin:0;color:var(--text);font-
 .cosmetics-filter-field{display:flex;align-items:center;gap:.5rem;background:#fff;border:1px solid var(--cos-border);border-radius:10px;padding:.6rem .9rem;flex:1;min-width:180px}
 .cosmetics-search{flex:2;min-width:240px}
 .cosmetics-filter-field input,.cosmetics-filter-field select{border:0;outline:0;background:transparent;font-size:.88rem;color:var(--cos-ink);width:100%}
-.cosmetics-card{position:relative;height:100%;padding:1.6rem;border-radius:16px;border:1px solid var(--cos-border);background:#fff;box-shadow:0 16px 34px -28px rgba(58,38,32,.4);cursor:pointer;transition:.25s;display:flex;flex-direction:column}
+.cosmetics-card{position:relative;height:100%;padding:0 1.6rem 1.6rem;border-radius:16px;border:1px solid var(--cos-border);background:#fff;box-shadow:0 16px 34px -28px rgba(58,38,32,.4);cursor:pointer;transition:.25s;display:flex;flex-direction:column;overflow:hidden}
 .cosmetics-card:hover{transform:translateY(-3px);box-shadow:0 24px 44px -26px rgba(58,38,32,.45);border-color:var(--accent,var(--cos-rose))}
-.cosmetics-card-visual{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--accent,var(--cos-rose)),var(--cos-gold));margin-bottom:1rem}
+.cosmetics-card-image{height:140px;margin:0 -1.6rem 1.1rem;background:linear-gradient(160deg,color-mix(in srgb,var(--accent,var(--cos-rose)) 20%,#fff),color-mix(in srgb,var(--accent,var(--cos-rose)) 6%,#fff));display:flex;align-items:center;justify-content:center;color:var(--accent,var(--cos-rose))}
+.cosmetics-card-code{position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,.9);color:var(--cos-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.64rem;font-weight:700;padding:.22rem .55rem;border-radius:6px;letter-spacing:.02em}
 .cosmetics-card-brand{font-size:.68rem;font-weight:800;letter-spacing:.1em;color:var(--accent,var(--cos-rose));text-transform:uppercase}
 .cosmetics-card-name{font-family:"Cormorant Garamond",serif;font-size:1.3rem;font-weight:700;color:var(--cos-ink);margin:.3rem 0 .5rem}
 .cosmetics-card-category{display:inline-block;align-self:flex-start;padding:.25rem .6rem;border-radius:999px;background:var(--cos-blush);color:var(--cos-muted);font-size:.68rem;font-weight:700;margin-bottom:.7rem}
 .cosmetics-card-desc{color:var(--cos-muted);font-size:.88rem;line-height:1.6;flex:1;margin-bottom:1rem}
-.cosmetics-card-origin{font-size:.78rem;color:var(--cos-muted);margin-bottom:1.1rem}
+.cosmetics-card-origin{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--cos-muted);margin-bottom:1.1rem}
 .cosmetics-card-actions{display:flex;gap:.6rem}
 .cosmetics-btn-outline{flex:1;padding:.6rem .8rem;border-radius:10px;border:1.5px solid var(--cos-border);background:#fff;color:var(--cos-ink);font-weight:700;font-size:.82rem}
 .cosmetics-btn-outline:hover{border-color:var(--accent,var(--cos-rose))}
@@ -153,10 +154,12 @@ html{font-size:16px;scroll-behavior:smooth}body{margin:0;color:var(--text);font-
 .cosmetics-detail-modal{border:0;border-radius:1.2rem;overflow:hidden}
 .cosmetics-detail-header{display:flex;justify-content:space-between;align-items:flex-start;padding:1.6rem 1.8rem;background:linear-gradient(120deg,var(--cos-ink),#5a3d33)}
 .cosmetics-detail-brand{color:var(--cos-gold);font-weight:800;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
+.cosmetics-detail-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.7rem;color:rgba(255,255,255,.6);margin-left:.6rem}
+.cosmetics-detail-image{height:170px;border-radius:14px;background:linear-gradient(160deg,var(--cos-blush),#fff);display:flex;align-items:center;justify-content:center;margin-bottom:1.3rem}
 .cosmetics-detail-body{padding:1.8rem}
 .cosmetics-detail-name{font-family:"Cormorant Garamond",serif;font-size:1.7rem;color:var(--cos-ink);margin-bottom:.7rem}
 .cosmetics-detail-tags{display:flex;gap:.5rem;margin-bottom:1.1rem}
-.cosmetics-tag{padding:.3rem .7rem;border-radius:999px;background:var(--cos-blush);color:var(--cos-muted);font-size:.72rem;font-weight:700}
+.cosmetics-tag{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:999px;background:var(--cos-blush);color:var(--cos-muted);font-size:.72rem;font-weight:700}
 .cosmetics-tag-origin{background:#fff2e0;color:#a3781f}
 .cosmetics-detail-desc{color:var(--cos-muted);font-size:.94rem;line-height:1.75;margin-bottom:1.2rem}
 .cosmetics-detail-highlights{list-style:none;padding:0;margin:0}
